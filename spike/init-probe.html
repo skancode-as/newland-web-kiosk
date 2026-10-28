@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>nlScan.Initialize(1) probe</title>
+        <style>
+            :root {
+                color-scheme: dark;
+                --bg: #0f1116;
+                --panel: #171a22;
+                --line: #2b3140;
+                --text: #e7eaf1;
+                --muted: #9aa3b5;
+                --accent: #7cb3ff;
+                --ok: #5fd18b;
+                --fail: #ff7a8a;
+                --warn: #f2c46b;
+                --mono:
+                    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html,
+            body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--text);
+            }
+            body {
+                font:
+                    16px/1.45 -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    Roboto,
+                    Arial,
+                    sans-serif;
+                padding: 20px 16px 40px;
+            }
+            main {
+                max-width: 720px;
+                margin: 0 auto;
+            }
+            h1 {
+                font-size: 22px;
+                line-height: 1.3;
+                margin: 0 0 6px;
+            }
+            h2 {
+                font-size: 14px;
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+                color: var(--muted);
+                margin: 26px 0 10px;
+            }
+            p {
+                margin: 0 0 10px;
+            }
+            code,
+            pre {
+                font-family: var(--mono);
+            }
+            code {
+                font-size: 0.92em;
+                color: var(--accent);
+            }
+            .sub {
+                color: var(--muted);
+                font-size: 14px;
+            }
+            .card {
+                background: var(--panel);
+                border: 1px solid var(--line);
+                border-radius: 12px;
+                padding: 16px;
+            }
+            .chips {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 14px;
+            }
+            .chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: #1e222c;
+                border: 1px solid var(--line);
+                border-radius: 999px;
+                padding: 5px 11px;
+                font-size: 13px;
+                color: var(--muted);
+            }
+            .chip strong {
+                color: var(--text);
+                font-weight: 600;
+            }
+            .dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: var(--muted);
+            }
+            .dot.ok {
+                background: var(--ok);
+            }
+            .dot.fail {
+                background: var(--fail);
+            }
+            ul {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
+            li {
+                border-top: 1px solid var(--line);
+                padding: 12px 0;
+            }
+            li:first-child {
+                border-top: 0;
+                padding-top: 0;
+            }
+            .row {
+                display: flex;
+                align-items: baseline;
+                justify-content: space-between;
+                gap: 10px;
+            }
+            .method {
+                font-family: var(--mono);
+                font-size: 15px;
+            }
+            .verdict {
+                font-size: 12px;
+                font-weight: 700;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+            }
+            .verdict.ok {
+                color: var(--ok);
+            }
+            .verdict.fail {
+                color: var(--fail);
+            }
+            .verdict.pending {
+                color: var(--muted);
+            }
+            .detail {
+                margin-top: 6px;
+                font-size: 13px;
+                color: var(--muted);
+                font-family: var(--mono);
+                word-break: break-word;
+            }
+            .detail .err {
+                color: var(--fail);
+            }
+            .note,
+            .caution {
+                margin-top: 18px;
+                padding: 10px 12px;
+                border-radius: 0 8px 8px 0;
+                font-size: 14px;
+            }
+            .note {
+                border-left: 3px solid var(--accent);
+                background: rgba(124, 179, 255, 0.08);
+                color: #c8d7f2;
+            }
+            .caution {
+                border-left: 3px solid var(--warn);
+                background: rgba(242, 196, 107, 0.08);
+                color: #ecd9ac;
+                font-size: 13px;
+            }
+            pre.log {
+                margin: 0;
+                max-height: 220px;
+                overflow: auto;
+                background: #0b0d12;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                padding: 10px;
+                font-size: 12px;
+                line-height: 1.5;
+                color: var(--muted);
+                white-space: pre-wrap;
+                word-break: break-word;
+            }
+            footer {
+                margin-top: 28px;
+                color: var(--muted);
+                font-size: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <header>
+                <h1>nlScan.Initialize(1)</h1>
+                <p class="sub">
+                    Single-shot bridge probe. No callbacks installed, no scan
+                    triggered.
+                </p>
+                <div class="chips">
+                    <span class="chip"
+                        ><span class="dot" id="dot-bridge"></span>bridge
+                        <strong id="bridge-state">checking</strong></span
+                    >
+                    <span class="chip">method <strong>Initialize</strong></span>
+                    <span class="chip">arg <strong>1</strong></span>
+                    <span class="chip"
+                        >reports <strong id="report-count">0</strong></span
+                    >
+                </div>
+            </header>
+
+            <section class="card" style="margin-top: 18px">
+                <h2 style="margin-top: 0">Sequence</h2>
+                <ul id="results">
+                    <li data-step="hello">
+                        <div class="row">
+                            <span class="method">hello</span>
+                            <span class="verdict pending" data-verdict
+                                >pending</span
+                            >
+                        </div>
+                        <div class="detail" data-detail>
+                            waiting for page load
+                        </div>
+                    </li>
+                    <li data-step="Initialize">
+                        <div class="row">
+                            <span class="method">Initialize(1)</span>
+                            <span class="verdict pending" data-verdict
+                                >pending</span
+                            >
+                        </div>
+                        <div class="detail" data-detail>not called yet</div>
+                    </li>
+                    <li data-step="Power1">
+                        <div class="row">
+                            <span class="method">Power(1)</span>
+                            <span class="verdict pending" data-verdict
+                                >pending</span
+                            >
+                        </div>
+                        <div class="detail" data-detail>scheduled +1s</div>
+                    </li>
+                    <li data-step="Power2">
+                        <div class="row">
+                            <span class="method">Power(1) repeat</span>
+                            <span class="verdict pending" data-verdict
+                                >pending</span
+                            >
+                        </div>
+                        <div class="detail" data-detail>scheduled +2s</div>
+                    </li>
+                    <li data-step="Stop">
+                        <div class="row">
+                            <span class="method">Stop()</span>
+                            <span class="verdict pending" data-verdict
+                                >pending</span
+                            >
+                        </div>
+                        <div class="detail" data-detail>scheduled +2s</div>
+                    </li>
+                </ul>
+            </section>
+
+            <div class="note">
+                The console report is being sent to the host probe at
+                <code>/__report</code>. Keep the probe running until it exits.
+            </div>
+            <div class="caution">
+                <strong>Side effect:</strong> the decompiled implementation
+                hardcodes <code>EXTRA_SCAN_MODE=3</code> and sets
+                <code>SEND_SCAN_FAIL_BROADCAST=1</code>. Scan mode stays 3 after
+                this run.
+            </div>
+
+            <h2>Report transport</h2>
+            <pre class="log" id="log">waiting for first report…</pre>
+
+            <footer><span id="href"></span></footer>
+        </main>
+
+        <script>
+            (function () {
+                "use strict";
+
+                var state = {
+                    seq: 0,
+                    sent: 0,
+                    lastSend: "none",
+                    log: [],
+                    initializedCalled: false,
+                };
+
+                function el(id) {
+                    return document.getElementById(id);
+                }
+
+                function strErr(e) {
+                    if (e === null || e === undefined) return String(e);
+                    if (typeof e === "string") return e;
+                    var name = e.name ? String(e.name) : "Error";
+                    var message = e.message ? String(e.message) : String(e);
+                    return name + ": " + message;
+                }
+
+                function truncate(s, n) {
+                    s = String(s);
+                    return s.length > n
+                        ? s.slice(0, n) + "…[+" + (s.length - n) + "]"
+                        : s;
+                }
+
+                function safeValue(value) {
+                    var type = typeof value;
+                    if (type === "undefined") return "[undefined]";
+                    if (type === "function") return "[function]";
+                    if (value === null) return null;
+                    if (type === "number") {
+                        if (value !== value) return "[NaN]";
+                        if (value === Infinity) return "[Infinity]";
+                        if (value === -Infinity) return "[-Infinity]";
+                        return value;
+                    }
+                    if (type === "string") return truncate(value, 400);
+                    if (type === "boolean") return value;
+                    try {
+                        return truncate(JSON.stringify(value), 400);
+                    } catch (e) {
+                        return (
+                            "[unserializable " + type + ": " + strErr(e) + "]"
+                        );
+                    }
+                }
+
+                function logLine(text) {
+                    state.log.push(text);
+                    if (state.log.length > 80) state.log.shift();
+                    var node = el("log");
+                    if (node) node.textContent = state.log.join("\n");
+                }
+
+                function describeBridge() {
+                    var info = {
+                        exists: false,
+                        type: typeof window.nlScan,
+                        keys: [],
+                        members: {},
+                    };
+                    if (!window.nlScan) return info;
+                    info.exists = true;
+                    info.type = typeof window.nlScan;
+                    try {
+                        info.keys = Object.keys(window.nlScan).sort();
+                    } catch (e) {
+                        info.keysError = strErr(e);
+                    }
+                    for (var i = 0; i < info.keys.length; i++) {
+                        var key = info.keys[i];
+                        try {
+                            var member = window.nlScan[key];
+                            info.members[key] = {
+                                type: typeof member,
+                                arity:
+                                    typeof member === "function"
+                                        ? member.length
+                                        : null,
+                            };
+                        } catch (e) {
+                            info.members[key] = {
+                                type: "throws",
+                                error: strErr(e),
+                            };
+                        }
+                    }
+                    return info;
+                }
+
+                var REPORT_URLS = (function () {
+                    var urls = ["/__report"];
+                    try {
+                        var protocol = String(window.location.protocol || "");
+                        var host = String(window.location.host || "");
+                        if (
+                            host &&
+                            (protocol === "newlandhttp:" ||
+                                protocol === "newlandhttps:")
+                        ) {
+                            var scheme =
+                                protocol === "newlandhttps:"
+                                    ? "https:"
+                                    : "http:";
+                            urls.push(scheme + "//" + host + "/__report");
+                        }
+                    } catch (e) {
+                        /* relative only */
+                    }
+                    return urls;
+                })();
+
+                function xhrPost(url, body, onOk, onFail) {
+                    try {
+                        var xhr = new XMLHttpRequest();
+                        xhr.open("POST", url, true);
+                        xhr.setRequestHeader(
+                            "Content-Type",
+                            "application/json",
+                        );
+                        xhr.timeout = 5000;
+                        xhr.onreadystatechange = function () {
+                            if (xhr.readyState !== 4) return;
+                            if (xhr.status >= 200 && xhr.status < 300)
+                                onOk(xhr.status);
+                            else onFail(xhr.status);
+                        };
+                        xhr.onerror = function () {
+                            onFail(0);
+                        };
+                        xhr.ontimeout = function () {
+                            onFail(-1);
+                        };
+                        xhr.send(body);
+                    } catch (e) {
+                        onFail(-2);
+                    }
+                }
+
+                function updateCounters() {
+                    var node = el("report-count");
+                    if (node) node.textContent = String(state.sent);
+                }
+
+                function postReport(report) {
+                    var body;
+                    try {
+                        if (!report || typeof report !== "object") {
+                            report = { kind: "error", error: "bad report" };
+                        }
+                        if (!report.ts) report.ts = new Date().toISOString();
+                        body = JSON.stringify(report);
+                    } catch (e) {
+                        body = JSON.stringify({
+                            kind: "error",
+                            ts: new Date().toISOString(),
+                            error: "could not serialize report: " + strErr(e),
+                        });
+                    }
+
+                    var finished = false;
+                    var index = 0;
+
+                    function ok(status) {
+                        if (finished) return;
+                        finished = true;
+                        state.sent += 1;
+                        state.lastSend = "ok (" + status + ")";
+                        updateCounters();
+                        logLine(
+                            "sent " +
+                                report.kind +
+                                " " +
+                                (report.method || "") +
+                                " → " +
+                                state.lastSend,
+                        );
+                    }
+
+                    function fail(message) {
+                        if (finished) return;
+                        finished = true;
+                        state.lastSend = "failed: " + message;
+                        updateCounters();
+                        logLine("report send failed: " + message);
+                    }
+
+                    function attempt() {
+                        if (finished) return;
+                        if (index >= REPORT_URLS.length) {
+                            fail("all transports failed");
+                            return;
+                        }
+                        var url = REPORT_URLS[index];
+                        index += 1;
+                        xhrPost(url, body, ok, function (status) {
+                            if (status === 0 || status === -1 || status === -2)
+                                attempt();
+                            else fail("http " + status);
+                        });
+                    }
+
+                    attempt();
+                }
+
+                function setVerdict(step, ok, detail) {
+                    var li = document.querySelector(
+                        '[data-step="' + step + '"]',
+                    );
+                    if (!li) return;
+                    var verdict = li.querySelector("[data-verdict]");
+                    var detailNode = li.querySelector("[data-detail]");
+                    if (verdict) {
+                        verdict.className =
+                            "verdict " +
+                            (ok === null ? "pending" : ok ? "ok" : "fail");
+                        verdict.textContent =
+                            ok === null ? "pending" : ok ? "ok" : "failed";
+                    }
+                    if (detailNode) {
+                        detailNode.textContent = detail;
+                        detailNode.className =
+                            ok === false ? "detail err" : "detail";
+                    }
+                }
+
+                function setBridge(ok, text) {
+                    var dot = el("dot-bridge");
+                    if (dot) dot.className = "dot " + (ok ? "ok" : "fail");
+                    var node = el("bridge-state");
+                    if (node) node.textContent = text;
+                }
+
+                function callOnce(method, args) {
+                    var entry = { method: method, args: args, ok: false };
+                    try {
+                        if (!window.nlScan)
+                            throw new Error("nlScan is not defined");
+                        var fn = window.nlScan[method];
+                        if (typeof fn !== "function")
+                            throw new Error(
+                                "nlScan." + method + " is not a function",
+                            );
+                        var value = fn.apply(window.nlScan, args);
+                        entry.ok = true;
+                        entry.resultType = typeof value;
+                        entry.result = safeValue(value);
+                    } catch (e) {
+                        entry.ok = false;
+                        entry.result = "[throws]";
+                        entry.error = strErr(e);
+                        entry.errorName = e && e.name ? String(e.name) : "";
+                    }
+                    return entry;
+                }
+
+                function reportCall(step, entry) {
+                    state.seq += 1;
+                    var report = {
+                        kind: "call",
+                        seq: state.seq,
+                        page: "init-probe",
+                        phase: "initialize",
+                        method: entry.method,
+                        args: entry.args,
+                        ok: entry.ok,
+                        result: entry.result,
+                    };
+                    if (entry.resultType) report.resultType = entry.resultType;
+                    if (!entry.ok) report.error = entry.error;
+                    if (entry.errorName) report.errorName = entry.errorName;
+
+                    postReport(report);
+
+                    if (step === "Initialize") {
+                        setBridge(true, entry.ok ? "responds" : "present");
+                        if (entry.ok) {
+                            setVerdict(
+                                step,
+                                true,
+                                "returned " +
+                                    (entry.resultType || "value") +
+                                    " " +
+                                    String(entry.result),
+                            );
+                        } else {
+                            setVerdict(step, false, entry.error);
+                        }
+                    } else if (entry.ok) {
+                        setVerdict(
+                            step,
+                            true,
+                            "returned " +
+                                (entry.resultType || "value") +
+                                " " +
+                                String(entry.result),
+                        );
+                    } else {
+                        setVerdict(step, false, entry.error);
+                    }
+                    return entry;
+                }
+
+                function runCall(step, method, args) {
+                    return reportCall(step, callOnce(method, args));
+                }
+
+                function boot() {
+                    var href = "";
+                    try {
+                        href = String(window.location.href);
+                    } catch (e) {
+                        href = "(unknown)";
+                    }
+                    var hrefNode = el("href");
+                    if (hrefNode) hrefNode.textContent = href;
+
+                    var nlScan = describeBridge();
+                    setBridge(
+                        nlScan.exists,
+                        nlScan.exists ? "present" : "missing",
+                    );
+
+                    postReport({
+                        kind: "hello",
+                        page: "init-probe",
+                        reason: "load",
+                        href: href,
+                        userAgent: (function () {
+                            try {
+                                return String(navigator.userAgent || "");
+                            } catch (e) {
+                                return "";
+                            }
+                        })(),
+                        nlScan: nlScan,
+                    });
+                    setVerdict(
+                        "hello",
+                        nlScan.exists,
+                        nlScan.exists
+                            ? "nlScan present with " +
+                                  nlScan.keys.length +
+                                  " keys"
+                            : "window.nlScan is " + nlScan.type,
+                    );
+
+                    logLine("hello queued; calling Initialize(1)");
+
+                    if (state.initializedCalled) return;
+                    state.initializedCalled = true;
+
+                    setTimeout(function () {
+                        runCall("Initialize", "Initialize", [1]);
+
+                        setTimeout(function () {
+                            runCall("Power1", "Power", [1]);
+
+                            setTimeout(function () {
+                                runCall("Power2", "Power", [1]);
+                                runCall("Stop", "Stop", []);
+                            }, 1000);
+                        }, 1000);
+                    }, 50);
+                }
+
+                if (document.readyState === "loading") {
+                    document.addEventListener("DOMContentLoaded", boot, false);
+                } else {
+                    boot();
+                }
+            })();
+        </script>
+    </body>
+</html>

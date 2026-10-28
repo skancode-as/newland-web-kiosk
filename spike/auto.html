@@ -1,0 +1,1251 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="color-scheme" content="dark" />
+        <title>MT90</title> runtime probe</title>
+        <style>
+            :root {
+                color-scheme: dark;
+                --bg: #0a0c0f;
+                --panel: #12161b;
+                --soft: #171d24;
+                --line: #27303a;
+                --text: #e9eef4;
+                --muted: #8d99a7;
+                --accent: #6ee7d8;
+                --danger: #f87171;
+                --mono:
+                    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+                --sans:
+                    system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            }
+
+            * {
+                box-sizing: border-box;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            html,
+            body {
+                margin: 0;
+                min-height: 100%;
+            }
+
+            body {
+                background:
+                    radial-gradient(
+                        700px 380px at 8% -10%,
+                        rgba(110, 231, 216, 0.09),
+                        transparent 60%
+                    ),
+                    var(--bg);
+                color: var(--text);
+                font-family: var(--sans);
+                font-size: 16px;
+                line-height: 1.45;
+            }
+
+            main {
+                width: min(920px, calc(100% - 24px));
+                margin: 0 auto;
+                padding: 18px 0 36px;
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+            }
+
+            h1 {
+                margin: 0;
+                font-size: 1.25rem;
+                letter-spacing: -0.01em;
+                line-height: 1.2;
+            }
+
+            h2 {
+                margin: 0 0 8px;
+                font-size: 0.76rem;
+                font-weight: 600;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: var(--muted);
+            }
+
+            p {
+                margin: 0;
+            }
+
+            .hint {
+                margin-top: 4px;
+                color: var(--accent);
+                font-size: 0.95rem;
+            }
+
+            .status {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px 18px;
+                padding: 10px 12px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: var(--soft);
+                color: var(--muted);
+                font-family: var(--mono);
+                font-size: 0.82rem;
+            }
+
+            .status span {
+                white-space: nowrap;
+            }
+
+            .status strong {
+                color: var(--text);
+                font-weight: 600;
+            }
+
+            .controls {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+                gap: 8px;
+            }
+
+            button {
+                appearance: none;
+                min-height: 46px;
+                padding: 10px 12px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: var(--soft);
+                color: var(--text);
+                font-family: inherit;
+                font-size: 0.95rem;
+                font-weight: 600;
+                cursor: pointer;
+            }
+
+            button:active {
+                border-color: var(--accent);
+                background: var(--accent);
+                color: #06201d;
+            }
+
+            button.primary {
+                border-color: rgba(110, 231, 216, 0.45);
+                background: rgba(110, 231, 216, 0.08);
+            }
+
+            button.warn {
+                border-color: rgba(248, 113, 113, 0.4);
+            }
+
+            .panel {
+                padding: 12px;
+                border: 1px solid var(--line);
+                border-radius: 12px;
+                background: var(--panel);
+            }
+
+            pre {
+                margin: 0;
+                max-height: 280px;
+                overflow: auto;
+                white-space: pre-wrap;
+                word-break: break-word;
+                color: #c7d2de;
+                font-family: var(--mono);
+                font-size: 0.78rem;
+                line-height: 1.5;
+            }
+
+            footer {
+                color: var(--muted);
+                font-size: 0.74rem;
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <header>
+                <h1></h1>Newland MT90 runtime probe</h1>
+                <p class="hint">
+                    Scan a barcode or tap Trigger while this page is open.
+                </p>
+            </header>
+
+            <section class="status" aria-live="polite">
+                <span></span>nlScan: <strong id="status-nlscan">…</strong></span>
+                <span>callbacks:</span> <strong id="status-callbacks">0</strong></span>
+                <span
+                    >last report:
+                    <strong id="status-send">not sent</strong></span
+                >
+            </section>
+
+            <section class="controls">
+                <button type="button" data-act="trigger">Trigger</button>
+                <button type="button" data-act="stop">Stop</button>
+                <button type="button" data-act="power-on">Power on</button>
+                <button type="button" data-act="power-off">Power off</button>
+                <button type="button" data-act="beep">Beep</button>
+                <button type="button" data-act="report" class="primary">
+                    Send report
+                </button>
+                <button type="button" data-act="reset" class="warn">
+                    Reset callbacks
+                </button>
+            </section>
+
+            <section class="panel">
+                <h2>Live log</h2</h2>>
+                <pre id="log">waiting for callbacks…</pre>
+            </section>
+
+            <footer>
+                Reports are posted to <code>/__report</code> and written to
+                <code>art</code>ifacts/runtime-probe.jsonl</code> by
+                <code>scripts</code>/adb-runtime-probe.py</code>.
+            </footer>
+        </main>
+
+        <script>
+            (function () {
+                "use strict";
+
+                var MAX_LOG_LINES = 7;
+                var REPORT_URLS = buildReportUrls();
+                var CALLBACKS = [
+                    { name: "nlBarcode", kind: "barcode" },
+                    { name: "nlNFC", kind: "nfc" },
+                    { name: "nlNHubResult", kind: "nhub" },
+                    { name: "nlNHubRestult", kind: "nhub" }
+                ];
+
+                var state = {
+                    callbacks: 0,
+                    lastSend: "not sent",
+                    log: []
+                };
+
+                // Pre-existing global handlers, so a reset can restore them.
+                var originals = {};
+                // The wrapper we currently installed for each name.
+                var installed = {};
+
+                function el(id) {
+                    try {
+                        return document.getElementById(id);
+                    } catch (e) {
+                        return null;
+                    }
+                }
+
+                function strErr(e) {
+                    try {
+                        if (e && typeof e === "object" && e.message) {
+                            return (
+                                String(e.name || "Error") +
+                                ": " +
+                                String(e.message)
+                            );
+                        }
+                        return String(e);
+                    } catch (inner) {
+                        return "unknown error";
+                    }
+                }
+
+                function truncate(text, limit) {
+                    text = String(text);
+                    if (text.length <= limit) return text;
+                    return text.slice(0, limit) + "…[+" + (text.length - limit) + "]";
+                }
+
+                function safeJson(value) {
+                    try {
+                        var text = JSON.stringify(value);
+                        return text === undefined ? String(value) : text;
+                    } catch (e) {
+                        return "[unserializable: " + strErr(e) + "]";
+                    }
+                }
+
+                function safeHref() {
+                    try {
+                        return String(window.location.href);
+                    } catch (e) {
+                        return "[unavailable]";
+                    }
+                }
+
+                function safeUA() {
+                    try {
+                        return String(window.navigator.userAgent);
+                    } catch (e) {
+                        return "[unavailable]";
+                    }
+                }
+
+                // Convert arbitrary values into JSON-safe data with hard limits.
+                // Never lets a throwing getter or circular reference abort the probe.
+                function safeCopy(value, depth, seen) {
+                    depth = typeof depth === "number" ? depth : 3;
+                    seen = seen || [];
+
+                    if (value === null || value === undefined) return value;
+
+                    var type = typeof value;
+                    if (type === "string") {
+                        return value.length > 4000
+                            ? value.slice(0, 4000) + "…[truncated]"
+                            : value;
+                    }
+                    if (type === "number") {
+                        return isFinite(value) ? value : String(value);
+                    }
+                    if (type === "boolean") return value;
+                    if (type === "bigint") return String(value) + "n";
+                    if (type === "symbol") return String(value);
+                    if (type === "function") {
+                        var fnName = "";
+                        var arity = 0;
+                        try {
+                            fnName = value.name || "";
+                        } catch (e) {}
+                        try {
+                            arity = value.length;
+                        } catch (e) {}
+                        return (
+                            "[Function " +
+                            (fnName || "anonymous") +
+                            "/" +
+                            arity +
+                            "]"
+                        );
+                    }
+
+                    if (depth <= 0) return "[" + type + "]";
+                    if (seen.indexOf(value) !== -1) return "[Circular]";
+                    seen.push(value);
+
+                    var out;
+                    try {
+                        if (Object.prototype.toString.call(value) === "[object Array]") {
+                            out = [];
+                            var arrayLength = 0;
+                            try {
+                                arrayLength = value.length;
+                            } catch (e) {
+                                arrayLength = 0;
+                            }
+                            var arrayLimit = Math.min(arrayLength, 40);
+                            for (var i = 0; i < arrayLimit; i++) {
+                                try {
+                                    out.push(safeCopy(value[i], depth - 1, seen));
+                                } catch (e) {
+                                    out.push("[throws]");
+                                }
+                            }
+                            if (arrayLength > arrayLimit) {
+                                out.push("…" + (arrayLength - arrayLimit) + " more");
+                            }
+                        } else {
+                            out = {};
+                            var keys = [];
+                            try {
+                                keys = Object.keys(value);
+                            } catch (e) {
+                                keys = [];
+                            }
+                            var keyLimit = Math.min(keys.length, 40);
+                            for (var k = 0; k < keyLimit; k++) {
+                                var key = keys[k];
+                                try {
+                                    out[key] = safeCopy(
+                                        value[key],
+                                        depth - 1,
+                                        seen
+                                    );
+                                } catch (e) {
+                                    out[key] = "[throws]";
+                                }
+                            }
+                            if (keys.length > keyLimit) {
+                                out.__moreKeys = keys.length - keyLimit;
+                            }
+                        }
+                    } catch (e) {
+                        out = "[unserializable: " + strErr(e) + "]";
+                    }
+
+                    seen.pop();
+                    return out;
+                }
+
+                function describeMember(owner, key) {
+                    var out = { key: key, type: "unknown" };
+                    var value;
+                    try {
+                        value = owner[key];
+                    } catch (e) {
+                        out.type = "[throws]";
+                        out.error = strErr(e);
+                        return out;
+                    }
+
+                    var type = value === null ? "null" : typeof value;
+                    out.type = type;
+
+                    if (type === "function") {
+                        try {
+                            out.arity = value.length;
+                        } catch (e) {
+                            out.arity = null;
+                        }
+                        try {
+                            out.name = value.name || "";
+                        } catch (e) {}
+                        return out;
+                    }
+
+                    if (
+                        type === "string" ||
+                        type === "number" ||
+                        type === "boolean"
+                    ) {
+                        out.value = safeCopy(value, 0, []);
+                        return out;
+                    }
+
+                    if (type === "undefined") {
+                        out.value = null;
+                        return out;
+                    }
+
+                    if (type === "object") {
+                        try {
+                            out.keys = Object.keys(value).slice(0, 30);
+                        } catch (e) {
+                            out.keys = "[throws]";
+                        }
+                        return out;
+                    }
+
+                    out.value = String(value);
+                    return out;
+                }
+
+                function describeGlobal(name) {
+                    var out = { name: name, type: "unknown" };
+                    var value;
+                    try {
+                        value = window[name];
+                    } catch (e) {
+                        out.type = "[throws]";
+                        out.error = strErr(e);
+                        return out;
+                    }
+                    var type = value === null ? "null" : typeof value;
+                    out.type = type;
+                    if (type === "function") {
+                        try {
+                            out.arity = value.length;
+                        } catch (e) {
+                            out.arity = null;
+                        }
+                    }
+                    return out;
+                }
+
+                function findMember(name) {
+                    var owners = [];
+                    try {
+                        var scanner = window.nlScan;
+                        if (scanner !== undefined && scanner !== null) {
+                            owners.push({ source: "nlScan", owner: scanner });
+                        }
+                    } catch (e) {
+                        // window.nlScan itself threw; fall through to window.
+                    }
+                    owners.push({ source: "window", owner: window });
+
+                    for (var i = 0; i < owners.length; i++) {
+                        var entry = owners[i];
+                        try {
+                            if (name in entry.owner) {
+                                return {
+                                    source: entry.source,
+                                    owner: entry.owner,
+                                    value: entry.owner[name]
+                                };
+                            }
+                        } catch (e) {
+                            // Ignore a throwing lookup and try the next owner.
+                        }
+                    }
+                    return null;
+                }
+
+                function probeCall(name) {
+                    var found = findMember(name);
+                    if (!found) {
+                        return { method: name, found: false, error: "not found" };
+                    }
+
+                    var value = found.value;
+                    var type = value === null ? "null" : typeof value;
+                    var out = {
+                        method: name,
+                        found: true,
+                        source: found.source,
+                        type: type
+                    };
+
+                    if (type !== "function") {
+                        out.error = "not a function";
+                        return out;
+                    }
+
+                    try {
+                        var result = value.call(found.owner);
+                        if (
+                            result &&
+                            typeof result === "object" &&
+                            typeof result.then === "function"
+                        ) {
+                            out.value = "[thenable promise]";
+                            out.thenable = true;
+                        } else {
+                            out.value = safeCopy(result, 2, []);
+                        }
+                    } catch (e) {
+                        out.error = strErr(e);
+                    }
+                    return out;
+                }
+
+                function probeProperty(name) {
+                    var found = findMember(name);
+                    if (!found) {
+                        return {
+                            property: name,
+                            found: false,
+                            error: "not found"
+                        };
+                    }
+
+                    var value = found.value;
+                    var type = value === null ? "null" : typeof value;
+                    var out = {
+                        property: name,
+                        found: true,
+                        source: found.source,
+                        type: type
+                    };
+
+                    if (type === "function") {
+                        try {
+                            out.arity = value.length;
+                        } catch (e) {
+                            out.arity = null;
+                        }
+                        out.note = "function, not called";
+                        return out;
+                    }
+
+                    try {
+                        out.value =
+                            type === "string" ||
+                            type === "number" ||
+                            type === "boolean"
+                                ? value
+                                : safeCopy(value, 1, []);
+                    } catch (e) {
+                        out.error = strErr(e);
+                    }
+                    return out;
+                }
+
+                function collectScanSurface() {
+                    var out = {
+                        exists: false,
+                        type: "undefined",
+                        keys: [],
+                        descriptors: []
+                    };
+
+                    var scanner;
+                    try {
+                        scanner = window.nlScan;
+                    } catch (e) {
+                        out.type = "[throws]";
+                        out.readError = strErr(e);
+                        return out;
+                    }
+
+                    if (scanner === undefined || scanner === null) {
+                        out.type = scanner === null ? "null" : "undefined";
+                        return out;
+                    }
+
+                    out.exists = true;
+                    out.type = typeof scanner;
+
+                    try {
+                        out.keys = Object.keys(scanner);
+                    } catch (e) {
+                        out.keys = [];
+                        out.keysError = strErr(e);
+                    }
+
+                    for (var i = 0; i < out.keys.length; i++) {
+                        var key = out.keys[i];
+                        try {
+                            out.descriptors.push(describeMember(scanner, key));
+                        } catch (e) {
+                            out.descriptors.push({
+                                key: key,
+                                type: "[throws]",
+                                error: strErr(e)
+                            });
+                        }
+                    }
+
+                    return out;
+                }
+
+                function collectHello(reason) {
+                    var bridgeNames = [
+                        "nlBarcode",
+                        "nlNFC",
+                        "nlNHubResult",
+                        "nlNHubRestult"
+                    ];
+                    var bridges = [];
+                    for (var i = 0; i < bridgeNames.length; i++) {
+                        bridges.push(describeGlobal(bridgeNames[i]));
+                    }
+
+                    var calls = [];
+                    var callNames = [
+                        "NGetModel",
+                        "NGetSerial",
+                        "NGetBuild",
+                        "NGetDeviceName"
+                    ];
+                    for (var c = 0; c < callNames.length; c++) {
+                        calls.push(probeCall(callNames[c]));
+                    }
+
+                    var properties = [];
+                    var propertyNames = [
+                        "DeviceModel",
+                        "SerialNumber",
+                        "BuildNumber",
+                        "DeviceName",
+                        "serialNumber"
+                    ];
+                    for (var p = 0; p < propertyNames.length; p++) {
+                        properties.push(probeProperty(propertyNames[p]));
+                    }
+
+                    return {
+                        kind: "hello",
+                        reason: reason || "load",
+                        ts: new Date().toISOString(),
+                        href: safeHref(),
+                        userAgent: safeUA(),
+                        bridges: bridges,
+                        nlScan: collectScanSurface(),
+                        deviceInfo: {
+                            calls: calls,
+                            properties: properties
+                        }
+                    };
+                }
+
+                function collectSurface(reason) {
+                    var scan = collectScanSurface();
+                    return {
+                        kind: "surface",
+                        reason: reason || "timer",
+                        ts: new Date().toISOString(),
+                        href: safeHref(),
+                        userAgent: safeUA(),
+                        nlScan: {
+                            exists: scan.exists,
+                            type: scan.type,
+                            keys: scan.keys,
+                            keysError: scan.keysError || null
+                        },
+                        bridges: [
+                            describeGlobal("nlBarcode"),
+                            describeGlobal("nlNFC"),
+                            describeGlobal("nlNHubResult"),
+                            describeGlobal("nlNHubRestult")
+                        ],
+                        callbackCount: state.callbacks,
+                        lastSend: state.lastSend
+                    };
+                }
+
+                function buildReportUrls() {
+                    var urls = ["/__report"];
+                    try {
+                        var protocol = String(window.location.protocol || "");
+                        var host = String(window.location.host || "");
+                        if (
+                            host &&
+                            (protocol === "newlandhttp:" ||
+                                protocol === "newlandhttps:")
+                        ) {
+                            var scheme =
+                                protocol === "newlandhttps:" ? "https:" : "http:";
+                            var absolute = scheme + "//" + host + "/__report";
+                            if (absolute !== urls[0]) urls.push(absolute);
+                        }
+                    } catch (e) {
+                        // Keep the relative URL only.
+                    }
+                    return urls;
+                }
+
+                function setSendStatus(text) {
+                    state.lastSend = text;
+                    updateStatus();
+                }
+
+                function xhrPost(url, body, onOk, onFail) {
+                    try {
+                        var xhr = new XMLHttpRequest();
+                        xhr.open("POST", url, true);
+                        xhr.setRequestHeader("Content-Type", "application/json");
+                        xhr.timeout = 5000;
+                        xhr.onreadystatechange = function () {
+                            if (xhr.readyState !== 4) return;
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                onOk(xhr.status);
+                            } else {
+                                onFail(xhr.status);
+                            }
+                        };
+                        xhr.onerror = function () {
+                            onFail(0);
+                        };
+                        xhr.ontimeout = function () {
+                            onFail(-1);
+                        };
+                        xhr.send(body);
+                    } catch (e) {
+                        onFail(-2);
+                    }
+                }
+
+                function postReport(report) {
+                    var body;
+                    try {
+                        if (!report || typeof report !== "object") {
+                            report = { kind: "error", error: "bad report" };
+                        }
+                        if (!report.ts) report.ts = new Date().toISOString();
+                        body = JSON.stringify(report);
+                    } catch (e) {
+                        body = JSON.stringify({
+                            kind: "error",
+                            ts: new Date().toISOString(),
+                            error: "could not serialize report: " + strErr(e)
+                        });
+                    }
+
+                    var finished = false;
+                    var index = 0;
+
+                    function ok(status) {
+                        if (finished) return;
+                        finished = true;
+                        setSendStatus("ok (" + status + ")");
+                    }
+
+                    function fail(message) {
+                        if (finished) return;
+                        finished = true;
+                        setSendStatus("failed: " + message);
+                        logLine("report send failed: " + message);
+                    }
+
+                    function attempt() {
+                        if (finished) return;
+                        if (index >= REPORT_URLS.length) {
+                            fail("all transports failed");
+                            return;
+                        }
+                        var url = REPORT_URLS[index];
+                        var first = index === 0;
+                        index += 1;
+
+                        if (first && typeof window.fetch === "function") {
+                            try {
+                                window
+                                    .fetch(url, {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json"
+                                        },
+                                        body: body
+                                    })
+                                    .then(function (response) {
+                                        if (response && response.ok) {
+                                            ok(response.status);
+                                        } else if (
+                                            response &&
+                                            response.status === 0
+                                        ) {
+                                            attempt();
+                                        } else {
+                                            fail(
+                                                "http " +
+                                                    (response && response.status)
+                                            );
+                                        }
+                                    })
+                                    .catch(function () {
+                                        attempt();
+                                    });
+                            } catch (e) {
+                                attempt();
+                            }
+                            return;
+                        }
+
+                        xhrPost(
+                            url,
+                            body,
+                            function (status) {
+                                ok(status);
+                            },
+                            function (status) {
+                                if (status === 0 || status === -1 || status === -2) {
+                                    attempt();
+                                } else {
+                                    fail("http " + status);
+                                }
+                            }
+                        );
+                    }
+
+                    setSendStatus("sending…");
+                    attempt();
+                }
+
+                function updateStatus() {
+                    var scanPresent = false;
+                    try {
+                        scanPresent =
+                            window.nlScan !== undefined &&
+                            window.nlScan !== null;
+                    } catch (e) {
+                        scanPresent = false;
+                    }
+
+                    var scanEl = el("status-nlscan");
+                    if (scanEl) scanEl.textContent = scanPresent ? "yes" : "no";
+
+                    var callbackEl = el("status-callbacks");
+                    if (callbackEl) {
+                        callbackEl.textContent = String(state.callbacks);
+                    }
+
+                    var sendEl = el("status-send");
+                    if (sendEl) sendEl.textContent = state.lastSend;
+                }
+
+                function renderLog() {
+                    var logEl = el("log");
+                    if (logEl) logEl.textContent = state.log.join("\n");
+                }
+
+                function logLine(message) {
+                    var stamp = "";
+                    try {
+                        stamp = new Date().toISOString().slice(11, 19);
+                    } catch (e) {}
+                    state.log.push((stamp ? stamp + "  " : "") + message);
+                    while (state.log.length > MAX_LOG_LINES) {
+                        state.log.shift();
+                    }
+                    renderLog();
+                }
+
+                function installWrapper(name, kind) {
+                    var current;
+                    try {
+                        current = window[name];
+                    } catch (e) {
+                        logLine("cannot read " + name + ": " + strErr(e));
+                        return;
+                    }
+
+                    if (current && current.__nlProbeWrapper === true) {
+                        originals[name] = current.__nlProbeOriginal;
+                        installed[name] = current;
+                        return;
+                    }
+
+                    originals[name] = current;
+
+                    var wrapper = function () {
+                        var args = [];
+                        var argTypes = [];
+                        var length = 0;
+
+                        try {
+                            length = arguments.length;
+                        } catch (e) {
+                            length = 0;
+                        }
+
+                        for (var i = 0; i < length; i++) {
+                            var raw;
+                            try {
+                                raw = arguments[i];
+                            } catch (e) {
+                                args.push("[throws]");
+                                argTypes.push("[throws]");
+                                continue;
+                            }
+                            argTypes.push(
+                                raw === null ? "null" : typeof raw
+                            );
+                            try {
+                                args.push(safeCopy(raw, 3, []));
+                            } catch (e) {
+                                args.push("[throws]");
+                            }
+                        }
+
+                        state.callbacks += 1;
+                        updateStatus();
+
+                        var report = {
+                            kind: kind,
+                            globalName: name,
+                            argsLength: length,
+                            args: args,
+                            argTypes: argTypes,
+                            callbackCount: state.callbacks,
+                            href: safeHref(),
+                            userAgent: safeUA()
+                        };
+                        postReport(report);
+
+                        logLine(
+                            name +
+                                " (" +
+                                length +
+                                " args): " +
+                                truncate(safeJson(args), 220)
+                        );
+
+                        var original = wrapper.__nlProbeOriginal;
+                        if (
+                            typeof original === "function" &&
+                            original !== wrapper
+                        ) {
+                            try {
+                                return original.apply(this, arguments);
+                            } catch (e) {
+                                logLine(
+                                    "original " + name + " threw: " + strErr(e)
+                                );
+                            }
+                        }
+                        return undefined;
+                    };
+
+                    wrapper.__nlProbeWrapper = true;
+                    wrapper.__nlProbeOriginal = current;
+
+                    try {
+                        window[name] = wrapper;
+                        installed[name] = wrapper;
+                    } catch (e) {
+                        logLine("cannot install " + name + ": " + strErr(e));
+                    }
+                }
+
+                function installAll() {
+                    for (var i = 0; i < CALLBACKS.length; i++) {
+                        try {
+                            installWrapper(
+                                CALLBACKS[i].name,
+                                CALLBACKS[i].kind
+                            );
+                        } catch (e) {
+                            logLine(
+                                "install failed for " +
+                                    CALLBACKS[i].name +
+                                    ": " +
+                                    strErr(e)
+                            );
+                        }
+                    }
+                }
+
+                function restoreAll() {
+                    for (var name in originals) {
+                        if (
+                            !Object.prototype.hasOwnProperty.call(
+                                originals,
+                                name
+                            )
+                        ) {
+                            continue;
+                        }
+                        try {
+                            if (originals[name] === undefined) {
+                                try {
+                                    delete window[name];
+                                } catch (e) {}
+                            } else {
+                                window[name] = originals[name];
+                            }
+                        } catch (e) {
+                            logLine(
+                                "cannot restore " + name + ": " + strErr(e)
+                            );
+                        }
+                    }
+                    originals = {};
+                    installed = {};
+                }
+
+                function reinstallIfLost() {
+                    for (var i = 0; i < CALLBACKS.length; i++) {
+                        var name = CALLBACKS[i].name;
+                        var current;
+                        try {
+                            current = window[name];
+                        } catch (e) {
+                            continue;
+                        }
+                        if (current && current.__nlProbeWrapper === true) {
+                            continue;
+                        }
+                        installWrapper(name, CALLBACKS[i].kind);
+                    }
+                }
+
+                function findCallable(names) {
+                    for (var i = 0; i < names.length; i++) {
+                        var found = findMember(names[i]);
+                        if (found && typeof found.value === "function") {
+                            return {
+                                name: names[i],
+                                owner: found.owner,
+                                fn: found.value,
+                                source: found.source
+                            };
+                        }
+                    }
+                    return null;
+                }
+
+                function tryArgSets(candidate, argSets) {
+                    var lastError = null;
+                    for (var i = 0; i < argSets.length; i++) {
+                        var args = argSets[i];
+                        try {
+                            var result = candidate.fn.apply(
+                                candidate.owner,
+                                args
+                            );
+                            return {
+                                ok: true,
+                                method: candidate.name,
+                                source: candidate.source,
+                                args: args,
+                                value: safeCopy(result, 2, [])
+                            };
+                        } catch (e) {
+                            lastError = strErr(e);
+                        }
+                    }
+                    return {
+                        ok: false,
+                        method: candidate.name,
+                        source: candidate.source,
+                        error: lastError || "threw with every argument form"
+                    };
+                }
+
+                function runAction(action) {
+                    var specs = {
+                        trigger: {
+                            names: ["Trigger", "trigger"],
+                            argSets: [[]]
+                        },
+                        stop: {
+                            names: ["Stop", "stop", "StopScan"],
+                            argSets: [[]]
+                        },
+                        "power-on": {
+                            names: [
+                                "scannerPower",
+                                "ScannerPower",
+                                "Power",
+                                "SetPower",
+                                "setPower"
+                            ],
+                            argSets: [[true], []]
+                        },
+                        "power-off": {
+                            names: [
+                                "scannerPower",
+                                "ScannerPower",
+                                "Power",
+                                "SetPower",
+                                "setPower"
+                            ],
+                            argSets: [[false], []]
+                        },
+                        beep: {
+                            names: ["Beep", "beep"],
+                            argSets: [[100], []]
+                        }
+                    };
+
+                    var spec = specs[action];
+                    if (!spec) return;
+
+                    var result;
+                    var candidate = findCallable(spec.names);
+                    if (!candidate) {
+                        result = {
+                            ok: false,
+                            error: "no matching method found",
+                            tried: spec.names
+                        };
+                    } else {
+                        result = tryArgSets(candidate, spec.argSets);
+                    }
+
+                    logLine(action + ": " + safeJson(result));
+                    postReport({
+                        kind: "control",
+                        action: action,
+                        ts: new Date().toISOString(),
+                        href: safeHref(),
+                        userAgent: safeUA(),
+                        result: result
+                    });
+                }
+
+                function resetCallbacks() {
+                    restoreAll();
+                    state.callbacks = 0;
+                    state.log = [];
+                    updateStatus();
+                    renderLog();
+                    logLine("callbacks reset; wrappers reinstalled");
+                    installAll();
+                    postReport(collectSurface("reset"));
+                }
+
+                function bindButtons() {
+                    var buttons = document.querySelectorAll("[data-act]");
+                    for (var i = 0; i < buttons.length; i++) {
+                        (function (button) {
+                            button.addEventListener("click", function (event) {
+                                try {
+                                    if (event && event.preventDefault) {
+                                        event.preventDefault();
+                                    }
+                                } catch (e) {}
+
+                                var action = button.getAttribute("data-act");
+                                try {
+                                    if (action === "report") {
+                                        postReport(collectHello("manual"));
+                                    } else if (action === "reset") {
+                                        resetCallbacks();
+                                    } else {
+                                        runAction(action);
+                                    }
+                                } catch (e) {
+                                    logLine(
+                                        "action " +
+                                            action +
+                                            " failed: " +
+                                            strErr(e)
+                                    );
+                                }
+                            });
+                        })(buttons[i]);
+                    }
+                }
+
+                function boot() {
+                    updateStatus();
+                    renderLog();
+                    logLine("page loaded");
+
+                    // Capture the untouched surface before installing wrappers.
+                    try {
+                        postReport(collectHello("load"));
+                    } catch (e) {
+                        logLine("hello probe failed: " + strErr(e));
+                    }
+                    installAll();
+                    updateStatus();
+
+                    // A late heartbeat covers a missed initial hello.
+                    setTimeout(function () {
+                        try {
+                            reinstallIfLost();
+                            postReport(collectSurface("timer"));
+                        } catch (e) {
+                            logLine("surface probe failed: " + strErr(e));
+                        }
+                        updateStatus();
+                    }, 1000);
+
+                    // The kiosk may inject its bridge after load; re-wrap if the
+                    // app replaced our wrapper. Bounded to avoid fighting the app.
+                    setTimeout(function () {
+                        try {
+                            reinstallIfLost();
+                        } catch (e) {}
+                    }, 3000);
+                    setTimeout(function () {
+                        try {
+                            reinstallIfLost();
+                        } catch (e) {}
+                    }, 10000);
+
+                    bindButtons();
+                    logLine("waiting for callbacks…");
+                }
+
+                try {
+                    window.addEventListener("error", function (event) {
+                        try {
+                            logLine(
+                                "js error: " +
+                                    String(event && event.message) +
+                                    (event && event.lineno
+                                        ? " @" + event.lineno
+                                        : "")
+                            );
+                        } catch (e) {}
+                    });
+                } catch (e) {}
+
+                try {
+                    boot();
+                } catch (e) {
+                    logLine("boot failed: " + strErr(e));
+                }
+            })();
+        </script>
+    </body>
+</html>

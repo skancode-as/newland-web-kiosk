@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NFC probe — Newland MT90</title>
+<style>
+    * { box-sizing: border-box; }
+
+</title>    html, body { min-height: 100%; }
+
+    body {
+        margin: 0;
+        background: #07090d;
+        color: #e8eef7;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+            "Helvetica Neue", Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background:
+            radial-gradient(circle at 12% 0%, rgba(56, 189, 248, 0.16), transparent 46%),
+            radial-gradient(circle at 92% 6%, rgba(74, 222, 128, 0.12), transparent 42%);
+        pointer-events: none;
+    }
+
+    main {
+        position: relative;
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 28px 20px 48px;
+    }
+
+    .eyebrow {
+        display: flex;
+        align-items: center;
+        margin: 0;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #8fa3bd;
+    }
+
+    .pulse {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        margin-right: 9px;
+        border-radius: 50%;
+        background: #4ade80;
+        box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5);
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.45); }
+        70% { box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .pulse { animation: none; }
+    }
+
+    h1 {
+        margin: 10px 0 12px;
+        font-size: 38px;
+        line-height: 1.06;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: #f7fbff;
+    }
+
+    .lede {
+        margin: 0 0 22px;
+        max-width: 62ch;
+        font-size: 16px;
+        line-height: 1.5;
+        color: #a9b8cc;
+    }
+
+    code, pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .lede code, .meta code {
+        padding: 2px 6px;
+        border: 1px solid rgba(96, 165, 250, 0.18);
+        border-radius: 6px;
+        background: rgba(96, 165, 250, 0.12);
+        color: #cfe3ff;
+        font-size: 0.9em;
+    }
+
+    .status {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 0 -6px 14px;
+    }
+
+    .card {
+        flex: 1 1 180px;
+        min-width: 0;
+        margin: 0 6px 12px;
+        padding: 16px;
+        border: 1px solid #1f2b3a;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #141b26, #0e141d);
+    }
+
+    .card.primary {
+        border-color: rgba(74, 222, 128, 0.35);
+        background: linear-gradient(180deg, #102019, #0b1410);
+    }
+
+    .label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #7f93aa;
+    }
+
+    .metric {
+        display: block;
+        font-size: 64px;
+        line-height: 1;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.03em;
+        color: #4ade80;
+    }
+
+    .value {
+        display: block;
+        font-size: 20px;
+        line-height: 1.25;
+        font-weight: 600;
+        color: #e8eef7;
+        word-break: break-word;
+    }
+
+    .hint {
+        display: block;
+        margin-top: 8px;
+        font-size: 12px;
+        line-height: 1.4;
+        color: #7f93aa;
+    }
+
+    #send-status[data-state="ok"] { color: #4ade80; }
+    #send-status[data-state="fail"] { color: #f87171; }
+    #send-status[data-state="pending"] { color: #fbbf24; }
+
+    .panel {
+        margin-bottom: 14px;
+        padding: 16px;
+        border: 1px solid #1f2b3a;
+        border-radius: 14px;
+        background: #0e141d;
+    }
+
+    .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+
+    .panel h2 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #8fa3bd;
+    }
+
+    .badge {
+        max-width: 62%;
+        overflow: hidden;
+        padding: 3px 9px;
+        border: 1px solid rgba(96, 165, 250, 0.25);
+        border-radius: 999px;
+        background: rgba(96, 165, 250, 0.1);
+        color: #93c5fd;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #last-args {
+        min-height: 76px;
+        max-height: 260px;
+        margin: 0;
+        padding: 14px;
+        overflow: auto;
+        border: 1px solid #17212e;
+        border-radius: 10px;
+        background: #070b10;
+        color: #d7e3f4;
+        font-size: 13px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .meta {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 0 -14px 14px;
+        padding: 6px 0 0;
+        border: 0;
+        background: transparent;
+    }
+
+    .meta > div {
+        flex: 1 1 220px;
+        min-width: 0;
+        margin: 0 14px 14px;
+    }
+
+    .meta code {
+        display: block;
+        margin-top: 6px;
+        padding: 8px 10px;
+        font-size: 11px;
+        word-break: break-all;
+    }
+
+    footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-top: 20px;
+    }
+
+    button {
+        -webkit-appearance: none;
+        appearance: none;
+        margin: 0 14px 12px 0;
+        padding: 10px 16px;
+        border: 1px solid #2a3a4d;
+        border-radius: 10px;
+        background: #16202c;
+        color: #dbe7f5;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    button:hover, button:focus {
+        border-color: #4ade80;
+        color: #ffffff;
+        outline: none;
+    }
+
+    button:active { transform: translateY(1px); }
+
+    .note {
+        flex: 1 1 260px;
+        margin: 0 0 12px;
+        font-size: 13px;
+        line-height: 1.45;
+        color: #8fa3bd;
+    }
+
+    .note strong { color: #fbbf24; }
+
+    @media (min-width: 720px) {
+        main { padding-top: 40px; }
+        h1 { font-size: 54px; }
+    }
+
+    @media (max-width: 420px) {
+        main { padding: 20px 14px 36px; }
+        h1 { font-size: 32px; }
+        .metric { font-size: 52px; }
+    }
+</style>
+</head>
+<body>
+<main>
+    <header>
+        <p class="eyebrow"><span class="pulse"></span>Newland MT90 · live NFC bridge probe</p>
+        <h1>Tap an NFC tag on the MT90 now</h1>
+        <p class="lede">
+            Hold a tag against the back of the device. Every call the kiosk makes to
+            <code>window.nlNFC</code> is posted to <code>/__report</code> and shown below.
+            No callback yet is expected until the tag is tapped.
+        </p>
+    </header>
+
+    <section class="status" aria-live="polite">
+        <div class="card primary">
+            <span class="label">NFC callbacks</span>
+            <strong class="metric" id="callbacks">0</strong>
+            <span class="hint" id="last-call">waiting for the first tap…</span>
+        </div>
+        <div class="card">
+            <span class="label">Last send</span>
+            <strong class="value" id="send-status" data-state="none">not sent</strong>
+            <span class="hint" id="send-transport">POST /__report</span>
+        </div>
+        <div class="card">
+            <span class="label">nlNFC before install</span>
+            <strong class="value" id="nfc-before">checking…</strong>
+            <span class="hint" id="scan-state">nlScan</code></h1>: checking…</span>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head">
+            <h2>Last raw args</h2>
+            <span class="badge" id="arg-types">—</span>
+        </div>
+        <pre id="last-args">No callback yet. Tap a tag.</pre>
+    </section>
+
+    <section class="panel meta">
+        <div>
+            <span class="label">Page</span>
+            <code id="page-url">…</code>
+        </div>
+        <div>
+            <span class="label">nlScan keys</span>
+            <code id="scan-keys">…</code>
+        </div>
+    </section>
+
+    <footer>
+        <button id="btn-status" type="button">Send status report</button>
+        <p class="note">
+            <strong>Keep this page open.</strong> The probe only records calls while
+            this page stays in the foreground. Reporting stops when the host probe's
+            wait window ends.
+        </p>
+    </footer>
+</main>
+
+<script>
+(function () {
+    "use strict";
+
+    var REPORT_URL = "/__report";
+    var MAX_STRING = 4000;
+    var MAX_DEPTH = 4;
+
+    var state = {
+        callbacks: 0,
+        lastSend: "not sent",
+        lastArgs: null,
+        lastArgTypes: [],
+        lastCallAt: null,
+        lastChainError: null,
+        nfcTypeBefore: "unknown",
+        previousNfcType: "unknown",
+        installError: null,
+        helloAttempts: 0,
+        helloOk: false,
+        scan: null
+    };
+
+    function byId(id) {
+        try {
+            return document.getElementById(id);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function setText(id, text) {
+        var node = byId(id);
+        if (node) node.textContent = String(text);
+    }
+
+    function isoNow() {
+        try {
+            return new Date().toISOString();
+        } catch (e) {
+            return "unknown-time";
+        }
+    }
+
+    function strErr(e) {
+        try {
+            if (e && typeof e === "object" && e.message) {
+                return String(e.name || "Error") + ": " + String(e.message);
+            }
+            return String(e);
+        } catch (inner) {
+            return "unknown error";
+        }
+    }
+
+    function safeHref() {
+        try {
+            return String(window.location.href);
+        } catch (e) {
+            return "[unavailable]";
+        }
+    }
+
+    function safeUA() {
+        try {
+            return String(window.navigator.userAgent);
+        } catch (e) {
+            return "[unavailable]";
+        }
+    }
+
+    function typeName(value) {
+        if (value === null) return "null";
+        return typeof value;
+    }
+
+    // Convert arbitrary values into JSON-safe data with hard limits. A throwing
+    // getter, proxy trap or circular reference must never abort the probe.
+    function safeCopy(value, depth, seen) {
+        depth = typeof depth === "number" ? depth : MAX_DEPTH;
+        seen = seen || [];
+
+        if (value === null) return null;
+
+        var type = typeof value;
+        if (type === "undefined") return "[undefined]";
+        if (type === "string") {
+            return value.length > MAX_STRING
+                ? value.slice(0, MAX_STRING) + "…[truncated]"
+                : value;
+        }
+        if (type === "number") {
+            return isFinite(value) ? value : String(value);
+        }
+        if (type === "boolean") return value;
+        if (type === "bigint") return String(value) + "n";
+        if (type === "symbol") return String(value);
+        if (type === "function") {
+            var fnName = "";
+            var arity = 0;
+            try { fnName = value.name || ""; } catch (e) {}
+            try { arity = value.length; } catch (e) {}
+            return "[Function " + (fnName || "anonymous") + "/" + arity + "]";
+        }
+
+        if (depth <= 0) return "[" + type + "]";
+
+        var already = false;
+        try {
+            already = seen.indexOf(value) !== -1;
+        } catch (e) {
+            already = false;
+        }
+        if (already) return "[Circular]";
+        seen.push(value);
+
+        var tag = "";
+        try {
+            tag = Object.prototype.toString.call(value);
+        } catch (e) {
+            seen.pop();
+            return "[unserializable: " + strErr(e) + "]";
+        }
+
+        var out;
+        if (tag === "[object Array]") {
+            out = [];
+            var length = 0;
+            try { length = value.length; } catch (e) { length = 0; }
+            var arrayLimit = Math.min(length, 50);
+            for (var i = 0; i < arrayLimit; i++) {
+                try {
+                    out.push(safeCopy(value[i], depth - 1, seen));
+                } catch (e) {
+                    out.push("[throws]");
+                }
+            }
+            if (length > arrayLimit) {
+                out.push("…" + (length - arrayLimit) + " more");
+            }
+        } else if (tag === "[object Error]") {
+            out = { name: "[Error]", message: "" };
+            try { out.name = String(value.name || "Error"); } catch (e) {}
+            try { out.message = String(value.message || ""); } catch (e) {}
+        } else {
+            out = {};
+            var keys = [];
+            try { keys = Object.keys(value); } catch (e) { keys = []; }
+            var keyLimit = Math.min(keys.length, 50);
+            for (var k = 0; k < keyLimit; k++) {
+                var key = keys[k];
+                try {
+                    out[key] = safeCopy(value[key], depth - 1, seen);
+                } catch (e) {
+                    out[key] = "[throws]";
+                }
+            }
+            if (keys.length > keyLimit) {
+                out.__moreKeys = keys.length - keyLimit;
+            }
+        }
+
+        seen.pop();
+        return out;
+    }
+
+    function safeJson(value, pretty) {
+        try {
+            var text = pretty
+                ? JSON.stringify(value, null, 2)
+                : JSON.stringify(value);
+            return text === undefined ? String(value) : text;
+        } catch (e) {
+            return "[unserializable: " + strErr(e) + "]";
+        }
+    }
+
+    function collectScanSurface() {
+        var out = {
+            exists: false,
+            type: "undefined",
+            keys: [],
+            keysError: null
+        };
+
+        var scanner;
+        try {
+            scanner = window.nlScan;
+        } catch (e) {
+            out.type = "[throws]";
+            out.keysError = strErr(e);
+            return out;
+        }
+
+        if (scanner === undefined || scanner === null) {
+            out.type = scanner === null ? "null" : "undefined";
+            return out;
+        }
+
+        out.exists = true;
+        out.type = typeof scanner;
+
+        try {
+            out.keys = Object.keys(scanner);
+        } catch (e) {
+            out.keys = [];
+            out.keysError = strErr(e);
+        }
+
+        return out;
+    }
+
+    function setSend(text, status, transport) {
+        state.lastSend = text;
+        var node = byId("send-status");
+        if (node) {
+            node.textContent = text;
+            node.setAttribute("data-state", status || "none");
+        }
+        if (transport) setText("send-transport", transport);
+    }
+
+    function updateStatus() {
+        setText("callbacks", state.callbacks);
+        setText("nfc-before", state.nfcTypeBefore);
+        setText(
+            "arg-types",
+            state.lastArgTypes && state.lastArgTypes.length
+                ? state.lastArgTypes.join(", ")
+                : "—"
+        );
+
+        if (state.lastCallAt) {
+            setText("last-call", "last at " + state.lastCallAt);
+        }
+
+        var argsNode = byId("last-args");
+        if (argsNode && state.lastArgs !== null) {
+            argsNode.textContent = safeJson(state.lastArgs, true);
+        }
+
+        var scanNode = byId("scan-state");
+        if (scanNode && state.scan) {
+            scanNode.textContent =
+                "nlScan: " + (state.scan.exists ? state.scan.type : "absent");
+        }
+
+        var keysNode = byId("scan-keys");
+        if (keysNode && state.scan) {
+            keysNode.textContent = state.scan.keys.length
+                ? state.scan.keys.join(", ")
+                : "(no keys)";
+        }
+    }
+
+    function xhrPost(body, label) {
+        try {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", REPORT_URL, true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.timeout = 6000;
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState !== 4) return;
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    setSend("ok " + xhr.status, "ok", "POST /__report (xhr)");
+                    if (label === "hello") state.helloOk = true;
+                } else {
+                    setSend("failed: http " + xhr.status, "fail",
+                        "POST /__report (xhr)");
+                }
+            };
+            xhr.onerror = function () {
+                setSend("failed: network", "fail", "POST /__report (xhr)");
+            };
+            xhr.ontimeout = function () {
+                setSend("failed: timeout", "fail", "POST /__report (xhr)");
+            };
+            xhr.send(body);
+        } catch (e) {
+            setSend("failed: " + strErr(e), "fail", "POST /__report (xhr)");
+        }
+    }
+
+    // Relative /__report, fetch first, XHR fallback. The report body is built
+    // before either transport so a serialization failure cannot abort a report.
+    function postReport(report, label) {
+        var body;
+        try {
+            body = JSON.stringify(report);
+        } catch (e) {
+            try {
+                body = JSON.stringify({
+                    kind: "error",
+                    ts: isoNow(),
+                    label: label || "unknown",
+                    error: "could not serialize report: " + strErr(e)
+                });
+            } catch (inner) {
+                return;
+            }
+        }
+
+        setSend("sending…", "pending");
+
+        if (typeof window.fetch === "function") {
+            var settled = false;
+            try {
+                window.fetch(REPORT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: body
+                }).then(function (response) {
+                    if (settled) return;
+                    if (response && response.ok) {
+                        settled = true;
+                        setSend("ok " + response.status, "ok",
+                            "POST /__report (fetch)");
+                        if (label === "hello") state.helloOk = true;
+                    } else if (response && response.status === 0) {
+                        settled = true;
+                        xhrPost(body, label);
+                    } else {
+                        settled = true;
+                        setSend("failed: http " + (response && response.status),
+                            "fail", "POST /__report (fetch)");
+                    }
+                })["catch"](function () {
+                    if (settled) return;
+                    settled = true;
+                    xhrPost(body, label);
+                });
+                return;
+            } catch (e) {
+                // Fall through to XHR if fetch threw synchronously.
+            }
+        }
+
+        xhrPost(body, label);
+    }
+
+    function helloReport(reason) {
+        var scan = collectScanSurface();
+        state.scan = scan;
+
+        return {
+            kind: "hello",
+            reason: reason || "load",
+            timestamp: isoNow(),
+            ts: isoNow(),
+            href: safeHref(),
+            userAgent: safeUA(),
+            nlScanExists: scan.exists,
+            nlScanType: scan.type,
+            nlScanKeys: scan.keys,
+            nlScan: {
+                exists: scan.exists,
+                type: scan.type,
+                keys: scan.keys,
+                keysError: scan.keysError
+            },
+            nlNFCTypeBefore: state.nfcTypeBefore,
+            previousNfcType: state.previousNfcType,
+            installed: !state.installError,
+            installError: state.installError,
+            reportUrl: REPORT_URL
+        };
+    }
+
+    function sendHello(reason) {
+        state.helloAttempts += 1;
+        updateStatus();
+        postReport(helloReport(reason), "hello");
+    }
+
+    function installNfc() {
+        var beforeType = "undefined";
+        var previous = null;
+
+        try {
+            beforeType = typeName(window.nlNFC);
+            if (typeof window.nlNFC === "function") previous = window.nlNFC;
+        } catch (e) {
+            beforeType = "[throws]";
+        }
+
+        state.nfcTypeBefore = beforeType;
+        state.previousNfcType = previous ? "function" : beforeType;
+
+        var wrapper = function () {
+            var args = [];
+            var argTypes = [];
+            var i;
+
+            for (i = 0; i < arguments.length; i++) {
+                args.push(arguments[i]);
+                try {
+                    argTypes.push(typeName(arguments[i]));
+                } catch (e) {
+                    argTypes.push("[throws]");
+                }
+            }
+
+            state.callbacks += 1;
+            state.lastArgTypes = argTypes;
+            state.lastCallAt = isoNow();
+
+            var safeArgs;
+            try {
+                safeArgs = safeCopy(args, MAX_DEPTH, []);
+            } catch (e) {
+                safeArgs = ["[serialize failed: " + strErr(e) + "]"];
+            }
+            state.lastArgs = safeArgs;
+
+            updateStatus();
+
+            postReport({
+                kind: "nfc",
+                globalName: "nlNFC",
+                argsLength: args.length,
+                args: safeArgs,
+                argTypes: argTypes,
+                callbackCount: state.callbacks,
+                ts: isoNow(),
+                href: safeHref()
+            }, "nfc");
+
+            if (previous) {
+                try {
+                    previous.apply(this || window, args);
+                } catch (e) {
+                    state.lastChainError = strErr(e);
+                }
+            }
+        };
+
+        try {
+            window.nlNFC = wrapper;
+        } catch (e1) {
+            try {
+                Object.defineProperty(window, "nlNFC", {
+                    value: wrapper,
+                    writable: true,
+                    configurable: true
+                });
+            } catch (e2) {
+                state.installError = strErr(e1) + " / " + strErr(e2);
+            }
+        }
+    }
+
+    function surfaceReport(reason) {
+        var scan = collectScanSurface();
+        state.scan = scan;
+
+        return {
+            kind: "surface",
+            reason: reason || "button",
+            timestamp: isoNow(),
+            ts: isoNow(),
+            href: safeHref(),
+            userAgent: safeUA(),
+            nlScan: {
+                exists: scan.exists,
+                type: scan.type,
+                keys: scan.keys,
+                keysError: scan.keysError
+            },
+            callbackCount: state.callbacks,
+            lastSend: state.lastSend,
+            lastArgs: state.lastArgs,
+            lastArgTypes: state.lastArgTypes,
+            lastCallAt: state.lastCallAt,
+            nlNFCTypeBefore: state.nfcTypeBefore,
+            installed: !state.installError,
+            installError: state.installError,
+            lastChainError: state.lastChainError
+        };
+    }
+
+    setText("page-url", safeHref());
+
+    state.scan = collectScanSurface();
+    installNfc();
+    updateStatus();
+    sendHello("load");
+
+    // One retry is enough to ride out a transient transport failure.
+    window.setTimeout(function () {
+        if (!state.helloOk && state.helloAttempts < 2) {
+            sendHello("retry");
+        }
+    }, 6000);
+
+    var button = byId("btn-status");
+    if (button) {
+        button.onclick = function () {
+            postReport(surfaceReport("button"), "surface");
+        };
+    }
+})();
+</script>
+</body>
+</html>

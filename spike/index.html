@@ -1,0 +1,1607 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="color-scheme" content="dark" />
+        <title>Newland Web Kiosk Spike</title>
+        <style>
+            :root {
+                color-scheme: dark;
+                --bg: #0a0c0f;
+                --panel: #12161b;
+                --soft: #171d24;
+                --line: #27303a;
+                --text: #e9eef4;
+                --muted: #8d99a7;
+                --accent: #6ee7d8;
+                --ok: #4ade80;
+                --warn: #fbbf24;
+                --danger: #f87171;
+                --mono:
+                    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+                --sans:
+                    system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                min-height: 100vh;
+                background:
+                    radial-gradient(
+                        800px 420px at 10% -10%,
+                        rgba(110, 231, 216, 0.08),
+                        transparent 60%
+                    ),
+                    var(--bg);
+                color: var(--text);
+                font-family: var(--sans);
+                line-height: 1.5;
+            }
+
+            main {
+                width: min(1080px, calc(100% - 28px));
+                margin: 0 auto;
+                padding: 32px 0 64px;
+            }
+
+            h1,
+            h2,
+            h3 {
+                margin: 0;
+                line-height: 1.2;
+            }
+
+            h1 {
+                font-size: clamp(1.6rem, 4vw, 2.2rem);
+                letter-spacing: -0.02em;
+            }
+
+            h2 {
+                font-size: 1.05rem;
+            }
+
+            h3 {
+                font-size: 0.9rem;
+                color: var(--muted);
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+            }
+
+            p {
+                margin: 0;
+            }
+
+            a,
+            button,
+            input {
+                font: inherit;
+            }
+
+            code,
+            pre,
+            .mono {
+                font-family: var(--mono);
+            }
+
+            .lede {
+                margin-top: 8px;
+                max-width: 76ch;
+                color: var(--muted);
+                font-size: 0.92rem;
+            }
+
+            .facts {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+                margin: 20px 0 18px;
+            }
+
+            .fact {
+                padding: 10px 12px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: var(--panel);
+                min-width: 0;
+            }
+
+            .fact span {
+                display: block;
+                color: var(--muted);
+                font-size: 0.68rem;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            .fact code,
+            .fact strong {
+                display: block;
+                margin-top: 3px;
+                font-size: 0.78rem;
+                overflow-wrap: anywhere;
+            }
+
+            .fact--wide {
+                grid-column: 1 / -1;
+            }
+
+            .ok {
+                color: var(--ok);
+            }
+
+            .warn {
+                color: var(--warn);
+            }
+
+            .bad {
+                color: var(--danger);
+            }
+
+            .muted {
+                color: var(--muted);
+            }
+
+            section {
+                margin-top: 16px;
+                padding: 18px;
+                border: 1px solid var(--line);
+                border-radius: 12px;
+                background: var(--panel);
+            }
+
+            .section-head {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                margin-bottom: 12px;
+            }
+
+            .section-head p {
+                margin-top: 3px;
+                color: var(--muted);
+                font-size: 0.78rem;
+            }
+
+            .toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 8px;
+            }
+
+            button {
+                padding: 7px 12px;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                background: var(--soft);
+                color: var(--text);
+                font-size: 0.8rem;
+                cursor: pointer;
+            }
+
+            button:hover:not(:disabled) {
+                border-color: var(--accent);
+                color: var(--accent);
+            }
+
+            button:disabled {
+                opacity: 0.38;
+                cursor: not-allowed;
+            }
+
+            button.primary {
+                border-color: rgba(110, 231, 216, 0.45);
+                background: rgba(110, 231, 216, 0.12);
+                color: var(--accent);
+            }
+
+            button.danger {
+                color: var(--danger);
+            }
+
+            label {
+                color: var(--muted);
+                font-size: 0.78rem;
+            }
+
+            input[type="text"] {
+                width: 100%;
+                padding: 7px 9px;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                background: var(--bg);
+                color: var(--text);
+                font-size: 0.8rem;
+            }
+
+            input[type="checkbox"] {
+                accent-color: var(--accent);
+            }
+
+            button:focus-visible,
+            input:focus-visible,
+            summary:focus-visible {
+                outline: 2px solid var(--accent);
+                outline-offset: 2px;
+            }
+
+            .table-wrap {
+                overflow-x: auto;
+                border: 1px solid var(--line);
+                border-radius: 9px;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 0.78rem;
+            }
+
+            th,
+            td {
+                padding: 8px 11px;
+                text-align: left;
+                vertical-align: top;
+            }
+
+            th {
+                background: var(--soft);
+                color: var(--muted);
+                font-size: 0.66rem;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            tbody tr + tr td {
+                border-top: 1px solid var(--line);
+            }
+
+            td code {
+                color: var(--accent);
+                overflow-wrap: anywhere;
+            }
+
+            .empty {
+                padding: 18px;
+                color: var(--muted);
+                font-size: 0.82rem;
+                text-align: center;
+            }
+
+            .method-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+                gap: 8px;
+                margin-bottom: 16px;
+            }
+
+            .casing {
+                padding: 14px;
+                border: 1px solid var(--line);
+                border-radius: 9px;
+                background: var(--soft);
+                margin-bottom: 16px;
+            }
+
+            .casing p {
+                margin: 6px 0 10px;
+                font-family: var(--mono);
+                font-size: 0.76rem;
+                overflow-wrap: anywhere;
+            }
+
+            .arbitrary {
+                display: grid;
+                grid-template-columns: 1fr 1.4fr auto;
+                gap: 8px;
+                align-items: end;
+            }
+
+            .arbitrary label {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .log {
+                display: flex;
+                flex-direction: column;
+                gap: 9px;
+                max-height: 440px;
+                overflow: auto;
+            }
+
+            .log-entry {
+                padding: 10px 12px;
+                border: 1px solid var(--line);
+                border-left: 3px solid var(--muted);
+                border-radius: 8px;
+                background: var(--soft);
+            }
+
+            .log-entry--barcode {
+                border-left-color: var(--accent);
+            }
+
+            .log-entry--nfc {
+                border-left-color: #93c5fd;
+            }
+
+            .log-entry--nhub {
+                border-left-color: #c084fc;
+            }
+
+            .log-entry--call {
+                border-left-color: var(--ok);
+            }
+
+            .log-entry--error {
+                border-left-color: var(--danger);
+            }
+
+            .log-entry__head {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 7px;
+                font-size: 0.72rem;
+            }
+
+            .tag {
+                padding: 2px 8px;
+                border-radius: 999px;
+                background: rgba(110, 231, 216, 0.12);
+                color: var(--accent);
+                font-weight: 700;
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+            }
+
+            pre {
+                margin: 0;
+                padding: 8px 10px;
+                border-radius: 7px;
+                background: var(--bg);
+                color: var(--text);
+                font-size: 0.72rem;
+                white-space: pre-wrap;
+                overflow-wrap: anywhere;
+            }
+
+            pre + pre {
+                margin-top: 6px;
+            }
+
+            pre.json {
+                color: #b7c6d6;
+            }
+
+            .checklist {
+                margin: 0;
+                padding-left: 20px;
+                color: var(--muted);
+                font-size: 0.84rem;
+            }
+
+            .checklist li + li {
+                margin-top: 7px;
+            }
+
+            .checklist strong {
+                color: var(--text);
+            }
+
+            .copy-status {
+                color: var(--ok);
+                font-size: 0.76rem;
+                min-height: 1em;
+            }
+
+            @media (max-width: 720px) {
+                .facts,
+                .arbitrary {
+                    grid-template-columns: 1fr;
+                }
+
+                .fact--wide {
+                    grid-column: auto;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                * {
+                    scroll-behavior: auto !important;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <header>
+                <h1>Newland Web Kiosk spike</h1>
+                <p class="lede">
+                    A no-build page for recording what the native bridge
+                    actually exposes. Serve it over HTTP and open it through the
+                    device's <code>newlandhttps://</code> shortcut.
+                </p>
+                <div class="facts">
+                    <div class="fact fact--wide">
+                        <span>Page URL</span>
+                        <code id="page-url"></code>
+                    </div>
+                    <div class="fact fact--wide">
+                        <span>navigator.userAgent</span>
+                        <code id="user-agent"></code>
+                    </div>
+                    <div class="fact">
+                        <span>window.nlScan</span>
+                        <strong id="nlscan-state">checking…</strong>
+                    </div>
+                    <div class="fact">
+                        <span>window.nlBarcode</span>
+                        <strong id="nlbarcode-state">checking…</strong>
+                    </div>
+                    <div class="fact">
+                        <span>window.nlNFC</span>
+                        <strong id="nlnfc-state">checking…</strong>
+                    </div>
+                    <div class="fact">
+                        <span>Object.keys(nlScan)</span>
+                        <strong id="nlscan-count">checking…</strong>
+                    </div>
+                </div>
+            </header>
+
+            <section aria-labelledby="surface-heading">
+                <div class="section-head">
+                    <div>
+                        <h2 id="surface-heading">nlScan surface</h2>
+                        <p>
+                            Every own key and its runtime type. Property getters
+                            are called defensively.
+                        </p>
+                    </div>
+                    <div class="toolbar">
+                        <button id="refresh-surface" type="button">
+                            Refresh surface
+                        </button>
+                    </div>
+                </div>
+                <p id="surface-empty" class="empty" hidden>
+                    window.nlScan is not present. Confirm the page was opened
+                    through a Web Kiosk shortcut.
+                </p>
+                <div id="surface-table-wrap" class="table-wrap" hidden>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">Key</th>
+                                <th scope="col">typeof</th>
+                                <th scope="col">Preview</th>
+                            </tr>
+                        </thead>
+                        <tbody id="surface-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section aria-labelledby="log-heading">
+                <div class="section-head">
+                    <div>
+                        <h2 id="log-heading">Callback log</h2>
+                        <p>
+                            nlBarcode is installed at load and chains any
+                            pre-existing handler. nlNFC and the NHub loggers
+                            stay undefined until you opt in, so wedge and
+                            spelling behaviour can be compared.
+                        </p>
+                    </div>
+                    <div class="toolbar">
+                        <label>
+                            <input id="barcode-toggle" type="checkbox" />
+                            Define nlBarcode
+                        </label>
+                        <label>
+                            <input id="nfc-toggle" type="checkbox" />
+                            Define nlNFC
+                        </label>
+                        <label>
+                            <input id="nhub-toggle" type="checkbox" />
+                            Define NHub loggers
+                        </label>
+                        <button id="clear-log" type="button">Clear log</button>
+                        <button id="copy-log" type="button">Copy log</button>
+                        <span
+                            id="copy-status"
+                            class="copy-status"
+                            role="status"
+                        ></span>
+                    </div>
+                </div>
+                <p id="log-empty" class="empty">
+                    No callbacks recorded yet. Trigger a scan or tap a tag.
+                </p>
+                <div id="log" class="log" aria-live="polite"></div>
+            </section>
+
+            <section aria-labelledby="calls-heading">
+                <div class="section-head">
+                    <div>
+                        <h2 id="calls-heading">Method calls</h2>
+                        <p>
+                            Buttons are enabled only when a matching method
+                            exists. Calls are logged above.
+                        </p>
+                    </div>
+                </div>
+                <div id="method-grid" class="method-grid"></div>
+
+                <div class="casing">
+                    <h3>Trigger mode casing</h3>
+                    <p id="casing-result">Not checked yet.</p>
+                    <div class="toolbar">
+                        <button id="check-casing" type="button">
+                            Check both spellings
+                        </button>
+                        <button id="call-trigger-mode" type="button">
+                            Call TriggerMode()
+                        </button>
+                        <button id="call-triggermode" type="button">
+                            Call Triggermode()
+                        </button>
+                    </div>
+                </div>
+
+                <form id="arbitrary-form" class="arbitrary">
+                    <label>
+                        Method name
+                        <input
+                            id="method-name"
+                            type="text"
+                            placeholder="e.g. DeviceModel"
+                            autocomplete="off"
+                        />
+                    </label>
+                    <label>
+                        Arguments (comma-separated)
+                        <input
+                            id="method-args"
+                            type="text"
+                            placeholder='true, 2, "text"'
+                            autocomplete="off"
+                        />
+                    </label>
+                    <button class="primary" type="submit">Invoke</button>
+                </form>
+            </section>
+
+            <section aria-labelledby="checklist-heading">
+                <div class="section-head">
+                    <div>
+                        <h2 id="checklist-heading">Record on hardware</h2>
+                        <p>
+                            Write the observed values next to each item in the
+                            team notes.
+                        </p>
+                    </div>
+                </div>
+                <ol class="checklist">
+                    <li>
+                        <strong>Barcode argument count/order.</strong> Keep
+                        <em>Define nlBarcode</em> on and scan. Is nlBarcode
+                        called with four or five arguments? Record every value
+                        and type.
+                    </li>
+                    <li>
+                        <strong>Source position.</strong> Is the source first,
+                        last, absent, or <code>undefined</code>? Record internal
+                        scans and Bluetooth scans separately.
+                    </li>
+                    <li>
+                        <strong>Status values.</strong> Record successful scans,
+                        cancelled scans and any failure status. Note whether
+                        status is a string or a number.
+                    </li>
+                    <li>
+                        <strong>Symbology values.</strong> Record the numeric ID
+                        and the human-readable name for each code type available
+                        on the device.
+                    </li>
+                    <li>
+                        <strong>Device info.</strong> In the surface table, note
+                        whether model, serial, build and device name are plain
+                        properties or getter functions, and their exact key
+                        spelling.
+                    </li>
+                    <li>
+                        <strong>NFC wedge.</strong> With
+                        <em>Define nlNFC</em> off, tap a tag while an input is
+                        focused. Does the value appear in the field, and does it
+                        send Tab or Enter? Repeat with the logger enabled and
+                        confirm callbacks replace the wedge.
+                    </li>
+                    <li>
+                        <strong>NHub callback spelling.</strong> Turn on
+                        <em>Define NHub loggers</em> and trigger a Bluetooth
+                        scan. Record which global name appears in the log,
+                        either <code>nlNHubResult</code> or
+                        <code>nlNHubRestult</code>, plus the raw arguments.
+                    </li>
+                    <li>
+                        <strong>URL options and version.</strong> Copy the
+                        <em>Page URL</em> fact above and record which options
+                        were accepted (<code>:ALLOWZOOM</code>,
+                        <code>:NOBUTTONS</code>, <code>:AUTOFOCUS</code>). Use
+                        <em>navigator.userAgent</em> and the surface table to
+                        note any way to infer the Web Kiosk version.
+                    </li>
+                    <li>
+                        <strong>Method casing.</strong> Use the casing buttons
+                        above and record which of <code>TriggerMode</code> and
+                        <code>Triggermode</code> exists. Method buttons and
+                        arbitrary calls also retry camelCase, all-lowercase and
+                        all-uppercase spellings.
+                    </li>
+                </ol>
+            </section>
+        </main>
+
+        <script>
+            (function () {
+                "use strict";
+
+                var logEntries = [];
+                var LOG_MAX = 200;
+                var previousNfc = null;
+                var previousBarcode;
+                var barcodeInstalled = false;
+                var nhubNames = ["nlNHubResult", "nlNHubRestult"];
+                var nhubOriginals = {};
+                var nhubActive = {};
+                var lastSurfaceSignature = null;
+                var copyTimer = null;
+
+                var pageUrl = document.getElementById("page-url");
+                var userAgent = document.getElementById("user-agent");
+                var nlscanState = document.getElementById("nlscan-state");
+                var nlbarcodeState = document.getElementById("nlbarcode-state");
+                var nlnfcState = document.getElementById("nlnfc-state");
+                var nlscanCount = document.getElementById("nlscan-count");
+                var surfaceEmpty = document.getElementById("surface-empty");
+                var surfaceTableWrap =
+                    document.getElementById("surface-table-wrap");
+                var surfaceBody = document.getElementById("surface-body");
+                var logEl = document.getElementById("log");
+                var logEmpty = document.getElementById("log-empty");
+                var copyStatus = document.getElementById("copy-status");
+                var barcodeToggle = document.getElementById("barcode-toggle");
+                var nfcToggle = document.getElementById("nfc-toggle");
+                var nhubToggle = document.getElementById("nhub-toggle");
+                var casingResult = document.getElementById("casing-result");
+                var methodGrid = document.getElementById("method-grid");
+
+                pageUrl.textContent = window.location.href;
+                userAgent.textContent = navigator.userAgent;
+
+                function now() {
+                    var date = new Date();
+                    return (
+                        date.toLocaleTimeString([], { hour12: false }) +
+                        "." +
+                        String(date.getMilliseconds()).padStart(3, "0")
+                    );
+                }
+
+                function safeJson(value) {
+                    var seen = new WeakSet();
+                    try {
+                        var json = JSON.stringify(
+                            value,
+                            function (key, item) {
+                                if (typeof item === "object" && item !== null) {
+                                    if (seen.has(item)) {
+                                        return "[Circular]";
+                                    }
+                                    seen.add(item);
+                                }
+                                if (typeof item === "function") {
+                                    return (
+                                        "[Function " +
+                                        (item.name || "anonymous") +
+                                        "]"
+                                    );
+                                }
+                                if (typeof item === "bigint") {
+                                    return item.toString() + "n";
+                                }
+                                if (typeof item === "undefined") {
+                                    return "[undefined]";
+                                }
+                                return item;
+                            },
+                            2,
+                        );
+                        return json === undefined ? String(value) : json;
+                    } catch (error) {
+                        return "[Unserializable: " + describeError(error) + "]";
+                    }
+                }
+
+                function describeError(error) {
+                    return error && error.message
+                        ? error.message
+                        : String(error);
+                }
+
+                function previewValue(value) {
+                    if (typeof value === "string") {
+                        return JSON.stringify(value);
+                    }
+                    if (
+                        typeof value === "number" ||
+                        typeof value === "boolean" ||
+                        value === null ||
+                        typeof value === "undefined"
+                    ) {
+                        return String(value);
+                    }
+                    if (typeof value === "function") {
+                        return "function " + (value.name || "anonymous");
+                    }
+                    try {
+                        var json = JSON.stringify(value);
+                        if (json === undefined) {
+                            return String(value);
+                        }
+                        return json.length > 90
+                            ? json.slice(0, 87) + "…"
+                            : json;
+                    } catch (error) {
+                        return String(value);
+                    }
+                }
+
+                function describeArg(value) {
+                    if (typeof value === "string") {
+                        return JSON.stringify(value);
+                    }
+                    if (typeof value === "function") {
+                        return "[Function]";
+                    }
+                    if (Array.isArray(value)) {
+                        return "[Array(" + value.length + ")]";
+                    }
+                    if (typeof value === "object" && value !== null) {
+                        return "[Object]";
+                    }
+                    return String(value);
+                }
+
+                function renderLog() {
+                    logEl.textContent = "";
+                    logEmpty.hidden = logEntries.length > 0;
+
+                    for (var i = 0; i < logEntries.length; i += 1) {
+                        var entry = logEntries[i];
+                        var item = document.createElement("article");
+                        item.className = "log-entry log-entry--" + entry.kind;
+
+                        var head = document.createElement("div");
+                        head.className = "log-entry__head";
+
+                        var tag = document.createElement("span");
+                        tag.className = "tag";
+                        tag.textContent = entry.kind;
+
+                        var count = document.createElement("span");
+                        count.className = "muted mono";
+                        count.textContent = "args.length: " + entry.count;
+
+                        var time = document.createElement("time");
+                        time.className = "muted mono";
+                        time.textContent = entry.at;
+
+                        head.appendChild(tag);
+
+                        if (entry.label) {
+                            var labelEl = document.createElement("span");
+                            labelEl.className = "muted mono";
+                            labelEl.textContent = entry.label;
+                            head.appendChild(labelEl);
+                        }
+
+                        head.appendChild(count);
+                        head.appendChild(time);
+
+                        var detail = document.createElement("pre");
+                        detail.textContent = entry.detail.join("\n");
+
+                        var json = document.createElement("pre");
+                        json.className = "json";
+                        json.textContent = entry.json;
+
+                        item.appendChild(head);
+                        item.appendChild(detail);
+                        item.appendChild(json);
+                        logEl.appendChild(item);
+                    }
+                }
+
+                function pushEntry(entry) {
+                    logEntries.unshift(entry);
+                    if (logEntries.length > LOG_MAX) {
+                        logEntries.length = LOG_MAX;
+                    }
+                    renderLog();
+                }
+
+                function logCallback(kind, args, label) {
+                    var detail = [];
+                    if (label) {
+                        detail.push("global: " + label);
+                    }
+                    for (var i = 0; i < args.length; i += 1) {
+                        detail.push(
+                            i +
+                                ": " +
+                                typeof args[i] +
+                                " " +
+                                describeArg(args[i]),
+                        );
+                    }
+
+                    pushEntry({
+                        kind: kind,
+                        at: now(),
+                        count: args.length,
+                        label: label || "",
+                        detail: detail,
+                        json: label
+                            ? safeJson({ global: label, args: args })
+                            : safeJson(args),
+                    });
+                }
+
+                function logCall(kind, method, args, outcome) {
+                    var rendered = [];
+                    for (var i = 0; i < args.length; i += 1) {
+                        rendered.push(previewValue(args[i]));
+                    }
+
+                    pushEntry({
+                        kind: kind,
+                        at: now(),
+                        count: args.length,
+                        detail: [
+                            "method: " + method,
+                            "args: " +
+                                (rendered.length
+                                    ? rendered.join(", ")
+                                    : "(none)"),
+                            "outcome: " + outcome,
+                        ],
+                        json: safeJson({
+                            method: method,
+                            args: args,
+                            outcome: outcome,
+                        }),
+                    });
+                }
+
+                function getApi() {
+                    var api = window.nlScan;
+                    if (typeof api === "object" && api !== null) {
+                        return api;
+                    }
+                    if (typeof api === "function") {
+                        return api;
+                    }
+                    return null;
+                }
+
+                function hasApiProperty(api, name) {
+                    try {
+                        return Object.prototype.hasOwnProperty.call(api, name);
+                    } catch (error) {
+                        return false;
+                    }
+                }
+
+                function readApiProperty(api, name) {
+                    try {
+                        return { ok: true, value: api[name] };
+                    } catch (error) {
+                        return { ok: false, error: describeError(error) };
+                    }
+                }
+
+                function resolveMethod(api, name) {
+                    if (!api) {
+                        return null;
+                    }
+
+                    // Must match src/core/bridge.ts: title-case with the
+                    // remainder lowered, then camelCase, lowercase, uppercase.
+                    var variants = [
+                        name,
+                        name.charAt(0).toUpperCase() +
+                            name.slice(1).toLowerCase(),
+                        name.charAt(0).toLowerCase() + name.slice(1),
+                        name.toLowerCase(),
+                        name.toUpperCase(),
+                    ];
+                    var seen = [];
+
+                    for (var i = 0; i < variants.length; i += 1) {
+                        var variant = variants[i];
+                        if (seen.indexOf(variant) !== -1) {
+                            continue;
+                        }
+                        seen.push(variant);
+
+                        // Do not resolve inherited names such as `toString`.
+                        if (!hasApiProperty(api, variant)) {
+                            continue;
+                        }
+
+                        var read = readApiProperty(api, variant);
+                        if (read.ok && typeof read.value === "function") {
+                            return variant;
+                        }
+                    }
+
+                    return null;
+                }
+
+                function callMethod(name, args, exact) {
+                    var api = getApi();
+                    if (!api) {
+                        logCall(
+                            "error",
+                            name,
+                            args,
+                            "window.nlScan is not present",
+                        );
+                        return;
+                    }
+
+                    var resolved = null;
+                    if (exact) {
+                        var exactRead = readApiProperty(api, name);
+                        if (
+                            exactRead.ok &&
+                            typeof exactRead.value === "function"
+                        ) {
+                            resolved = name;
+                        }
+                    } else {
+                        resolved = resolveMethod(api, name);
+                    }
+
+                    if (!resolved) {
+                        logCall("error", name, args, "method not found");
+                        return;
+                    }
+
+                    var methodRead = readApiProperty(api, resolved);
+                    if (!methodRead.ok) {
+                        logCall(
+                            "error",
+                            resolved,
+                            args,
+                            "property read threw: " + methodRead.error,
+                        );
+                        return;
+                    }
+                    if (typeof methodRead.value !== "function") {
+                        logCall(
+                            "error",
+                            resolved,
+                            args,
+                            "property is not a function",
+                        );
+                        return;
+                    }
+
+                    try {
+                        var result = methodRead.value.apply(api, args);
+                        logCall(
+                            "call",
+                            resolved,
+                            args,
+                            "returned " + previewValue(result),
+                        );
+                    } catch (error) {
+                        logCall(
+                            "error",
+                            resolved,
+                            args,
+                            "threw: " + describeError(error),
+                        );
+                    }
+                }
+
+                function surfaceSignature(api) {
+                    if (!api) {
+                        return "missing";
+                    }
+
+                    var keys = Object.keys(api);
+                    var parts = [];
+                    for (var i = 0; i < keys.length; i += 1) {
+                        var read = readApiProperty(api, keys[i]);
+                        var type = read.ok
+                            ? typeof read.value
+                            : "[throws] " + read.error;
+                        parts.push(keys[i] + ":" + type);
+                    }
+                    return parts.join("|");
+                }
+
+                function renderSurface(api, force) {
+                    var signature = surfaceSignature(api);
+                    if (!force && signature === lastSurfaceSignature) {
+                        return;
+                    }
+                    lastSurfaceSignature = signature;
+                    surfaceBody.textContent = "";
+
+                    if (!api) {
+                        surfaceEmpty.hidden = false;
+                        surfaceTableWrap.hidden = true;
+                        nlscanCount.textContent = "0";
+                        return;
+                    }
+
+                    var keys = Object.keys(api);
+                    surfaceEmpty.hidden = true;
+                    surfaceTableWrap.hidden = false;
+                    nlscanCount.textContent = String(keys.length);
+
+                    for (var i = 0; i < keys.length; i += 1) {
+                        var key = keys[i];
+                        var type = "unknown";
+                        var preview = "";
+
+                        var read = readApiProperty(api, key);
+                        if (read.ok) {
+                            type = typeof read.value;
+                            preview = previewValue(read.value);
+                        } else {
+                            type = "getter threw";
+                            preview = "[throws] " + read.error;
+                        }
+
+                        var row = document.createElement("tr");
+                        var nameCell = document.createElement("td");
+                        var nameCode = document.createElement("code");
+                        nameCode.textContent = key;
+                        nameCell.appendChild(nameCode);
+
+                        var typeCell = document.createElement("td");
+                        typeCell.className = "mono";
+                        typeCell.textContent = type;
+
+                        var previewCell = document.createElement("td");
+                        previewCell.className = "mono muted";
+                        previewCell.textContent = preview;
+
+                        row.appendChild(nameCell);
+                        row.appendChild(typeCell);
+                        row.appendChild(previewCell);
+                        surfaceBody.appendChild(row);
+                    }
+                }
+
+                function updateState() {
+                    var api = getApi();
+
+                    nlscanState.textContent = api ? "present" : "not present";
+                    nlscanState.className = api ? "ok" : "bad";
+
+                    var barcodeValue = window.nlBarcode;
+                    if (typeof barcodeValue === "function") {
+                        nlbarcodeState.textContent =
+                            barcodeValue === barcodeHandler
+                                ? "function (spike logger)"
+                                : "function (pre-existing)";
+                        nlbarcodeState.className = "ok";
+                    } else {
+                        nlbarcodeState.textContent = "not defined";
+                        nlbarcodeState.className = "warn";
+                    }
+
+                    if (typeof window.nlNFC === "function") {
+                        nlnfcState.textContent =
+                            window.nlNFC === nfcHandler
+                                ? "function (spike logger)"
+                                : "function (pre-existing)";
+                        nlnfcState.className = "ok";
+                    } else {
+                        nlnfcState.textContent =
+                            "not defined (kiosk wedge active)";
+                        nlnfcState.className = "warn";
+                    }
+
+                    nfcToggle.checked = window.nlNFC === nfcHandler;
+                    barcodeToggle.checked = barcodeValue === barcodeHandler;
+                    nhubToggle.checked =
+                        window.nlNHubResult === nhubHandlers.nlNHubResult ||
+                        window.nlNHubRestult === nhubHandlers.nlNHubRestult;
+                    updateCasing();
+                    updateMethodButtons(api);
+                    renderSurface(api, false);
+                }
+
+                function updateCasing() {
+                    var api = getApi();
+                    if (!api) {
+                        casingResult.textContent =
+                            "window.nlScan is not present.";
+                        return;
+                    }
+
+                    var names = ["TriggerMode", "Triggermode"];
+                    var parts = [];
+                    for (var i = 0; i < names.length; i += 1) {
+                        var name = names[i];
+                        var read = readApiProperty(api, name);
+                        var type = read.ok
+                            ? typeof read.value
+                            : "[throws] " + read.error;
+                        parts.push(
+                            name +
+                                ": " +
+                                (type === "function"
+                                    ? "function (present)"
+                                    : type),
+                        );
+                    }
+                    casingResult.textContent = parts.join(" · ");
+                }
+
+                var methodButtons = [
+                    { label: "Power(true)", method: "Power", args: [true] },
+                    { label: "Power(false)", method: "Power", args: [false] },
+                    { label: "Trigger()", method: "Trigger", args: [] },
+                    { label: "Stop()", method: "Stop", args: [] },
+                    { label: "Initialize()", method: "Initialize", args: [] },
+                    { label: "Beep()", method: "Beep", args: [] },
+                    { label: "LED(true)", method: "LED", args: [true] },
+                    { label: "LED(false)", method: "LED", args: [false] },
+                ];
+
+                function updateMethodButtons(api) {
+                    for (var i = 0; i < methodGrid.children.length; i += 1) {
+                        var button = methodGrid.children[i];
+                        var method = button.getAttribute("data-method");
+                        button.disabled =
+                            !api || resolveMethod(api, method) === null;
+                    }
+                }
+
+                for (var i = 0; i < methodButtons.length; i += 1) {
+                    (function (definition) {
+                        var button = document.createElement("button");
+                        button.type = "button";
+                        button.textContent = definition.label;
+                        button.setAttribute("data-method", definition.method);
+                        button.addEventListener("click", function () {
+                            callMethod(
+                                definition.method,
+                                definition.args,
+                                false,
+                            );
+                        });
+                        methodGrid.appendChild(button);
+                    })(methodButtons[i]);
+                }
+
+                function nfcHandler() {
+                    logCallback("nfc", Array.prototype.slice.call(arguments));
+                }
+
+                function barcodeHandler() {
+                    var args = Array.prototype.slice.call(arguments);
+
+                    if (typeof previousBarcode === "function") {
+                        try {
+                            previousBarcode.apply(window, args);
+                        } catch (error) {
+                            logCallback("error", [
+                                "previous nlBarcode handler threw",
+                                describeError(error),
+                            ]);
+                        }
+                    }
+
+                    logCallback("barcode", args);
+                }
+
+                function restoreGlobal(name, value) {
+                    if (value === undefined) {
+                        try {
+                            delete window[name];
+                        } catch (error) {
+                            window[name] = undefined;
+                        }
+                        return;
+                    }
+                    window[name] = value;
+                }
+
+                function installBarcode() {
+                    if (window.nlBarcode === barcodeHandler) {
+                        return;
+                    }
+
+                    if (barcodeInstalled) {
+                        removeBarcode();
+                    }
+
+                    previousBarcode = window.nlBarcode;
+                    barcodeInstalled = true;
+                    window.nlBarcode = barcodeHandler;
+                    updateState();
+                }
+
+                function removeBarcode() {
+                    if (barcodeInstalled) {
+                        if (window.nlBarcode === barcodeHandler) {
+                            restoreGlobal("nlBarcode", previousBarcode);
+                        }
+                        barcodeInstalled = false;
+                        previousBarcode = undefined;
+                    }
+                    updateState();
+                }
+
+                function nhubResultHandler() {
+                    logNhub(
+                        "nlNHubResult",
+                        Array.prototype.slice.call(arguments),
+                    );
+                }
+
+                function nhubRestultHandler() {
+                    logNhub(
+                        "nlNHubRestult",
+                        Array.prototype.slice.call(arguments),
+                    );
+                }
+
+                var nhubHandlers = {
+                    nlNHubResult: nhubResultHandler,
+                    nlNHubRestult: nhubRestultHandler,
+                };
+
+                function logNhub(name, args) {
+                    var original = nhubOriginals[name];
+
+                    if (typeof original === "function") {
+                        try {
+                            original.apply(window, args);
+                        } catch (error) {
+                            logCallback("error", [
+                                "previous " + name + " handler threw",
+                                describeError(error),
+                            ]);
+                        }
+                    }
+
+                    logCallback("nhub", args, name);
+                }
+
+                function restoreNhubName(name) {
+                    var handler = nhubHandlers[name];
+
+                    if (!nhubActive[name] || window[name] !== handler) {
+                        nhubActive[name] = false;
+                        return;
+                    }
+
+                    try {
+                        restoreGlobal(name, nhubOriginals[name]);
+                    } catch (error) {
+                        logCallback("error", [
+                            "failed to restore " + name,
+                            describeError(error),
+                        ]);
+                    }
+
+                    nhubActive[name] = false;
+                    nhubOriginals[name] = undefined;
+                }
+
+                function installNhub() {
+                    for (var i = 0; i < nhubNames.length; i += 1) {
+                        var name = nhubNames[i];
+                        var handler = nhubHandlers[name];
+
+                        if (window[name] === handler) {
+                            nhubActive[name] = true;
+                            continue;
+                        }
+
+                        if (nhubActive[name]) {
+                            restoreNhubName(name);
+                        }
+
+                        try {
+                            nhubOriginals[name] = window[name];
+                            window[name] = handler;
+                            nhubActive[name] = true;
+                        } catch (error) {
+                            nhubActive[name] = false;
+                            logCallback("error", [
+                                "failed to install " + name,
+                                describeError(error),
+                            ]);
+                        }
+                    }
+                    updateState();
+                }
+
+                function removeNhub() {
+                    for (var i = 0; i < nhubNames.length; i += 1) {
+                        restoreNhubName(nhubNames[i]);
+                    }
+                    updateState();
+                }
+
+                installBarcode();
+
+                function installNfc() {
+                    previousNfc = window.nlNFC;
+                    window.nlNFC = nfcHandler;
+                    updateState();
+                }
+
+                function removeNfc() {
+                    if (window.nlNFC === nfcHandler) {
+                        if (typeof previousNfc === "function") {
+                            window.nlNFC = previousNfc;
+                        } else {
+                            try {
+                                delete window.nlNFC;
+                            } catch (error) {
+                                window.nlNFC = undefined;
+                            }
+                        }
+                    }
+                    previousNfc = null;
+                    updateState();
+                }
+
+                function parseArgs(text) {
+                    if (!text.trim()) {
+                        return [];
+                    }
+
+                    return text.split(",").map(function (part) {
+                        var raw = part.trim();
+                        if (raw === "true") {
+                            return true;
+                        }
+                        if (raw === "false") {
+                            return false;
+                        }
+                        if (raw === "null") {
+                            return null;
+                        }
+                        if (raw === "undefined") {
+                            return undefined;
+                        }
+                        if (raw !== "" && !Number.isNaN(Number(raw))) {
+                            return Number(raw);
+                        }
+                        if (
+                            (raw.charAt(0) === '"' &&
+                                raw.charAt(raw.length - 1) === '"') ||
+                            (raw.charAt(0) === "'" &&
+                                raw.charAt(raw.length - 1) === "'")
+                        ) {
+                            return raw.slice(1, -1);
+                        }
+                        return raw;
+                    });
+                }
+
+                function serializeLog() {
+                    var lines = [];
+                    for (var i = logEntries.length - 1; i >= 0; i -= 1) {
+                        var entry = logEntries[i];
+                        lines.push(
+                            "[" +
+                                entry.at +
+                                "] " +
+                                entry.kind +
+                                " args.length=" +
+                                entry.count,
+                            entry.detail.join("\n"),
+                            "JSON: " + entry.json,
+                            "",
+                        );
+                    }
+                    return lines.join("\n");
+                }
+
+                function flashCopyStatus(text) {
+                    copyStatus.textContent = text;
+                    if (copyTimer !== null) {
+                        clearTimeout(copyTimer);
+                    }
+                    copyTimer = setTimeout(function () {
+                        copyStatus.textContent = "";
+                    }, 2500);
+                }
+
+                function copyLog() {
+                    var text = serializeLog();
+                    if (!text) {
+                        flashCopyStatus("Log is empty.");
+                        return;
+                    }
+
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(text).then(
+                            function () {
+                                flashCopyStatus("Log copied.");
+                            },
+                            function () {
+                                fallbackCopy(text);
+                            },
+                        );
+                    } else {
+                        fallbackCopy(text);
+                    }
+                }
+
+                function fallbackCopy(text) {
+                    var area = document.createElement("textarea");
+                    area.value = text;
+                    area.setAttribute("readonly", "");
+                    area.style.position = "fixed";
+                    area.style.opacity = "0";
+                    document.body.appendChild(area);
+                    area.select();
+
+                    var copied = false;
+                    try {
+                        copied = document.execCommand("copy");
+                    } catch (error) {
+                        copied = false;
+                    }
+
+                    area.remove();
+                    flashCopyStatus(
+                        copied
+                            ? "Log copied."
+                            : "Copy failed; select the log manually.",
+                    );
+                }
+
+                document
+                    .getElementById("refresh-surface")
+                    .addEventListener("click", function () {
+                        updateState();
+                        renderSurface(getApi(), true);
+                    });
+
+                document
+                    .getElementById("clear-log")
+                    .addEventListener("click", function () {
+                        logEntries = [];
+                        renderLog();
+                    });
+
+                document
+                    .getElementById("copy-log")
+                    .addEventListener("click", copyLog);
+
+                barcodeToggle.addEventListener("change", function () {
+                    if (barcodeToggle.checked) {
+                        installBarcode();
+                    } else {
+                        removeBarcode();
+                    }
+                });
+
+                nfcToggle.addEventListener("change", function () {
+                    if (nfcToggle.checked) {
+                        installNfc();
+                    } else {
+                        removeNfc();
+                    }
+                });
+
+                nhubToggle.addEventListener("change", function () {
+                    if (nhubToggle.checked) {
+                        installNhub();
+                    } else {
+                        removeNhub();
+                    }
+                });
+
+                document
+                    .getElementById("check-casing")
+                    .addEventListener("click", function () {
+                        updateCasing();
+                        var api = getApi();
+                        var outcome;
+
+                        if (api) {
+                            var triggerModeRead = readApiProperty(
+                                api,
+                                "TriggerMode",
+                            );
+                            var triggermodeRead = readApiProperty(
+                                api,
+                                "Triggermode",
+                            );
+                            outcome =
+                                "TriggerMode=" +
+                                (triggerModeRead.ok
+                                    ? typeof triggerModeRead.value
+                                    : "[throws] " + triggerModeRead.error) +
+                                ", Triggermode=" +
+                                (triggermodeRead.ok
+                                    ? typeof triggermodeRead.value
+                                    : "[throws] " + triggermodeRead.error);
+                        } else {
+                            outcome = "window.nlScan is not present";
+                        }
+
+                        logCall("call", "TriggerMode casing", [], outcome);
+                    });
+
+                document
+                    .getElementById("call-trigger-mode")
+                    .addEventListener("click", function () {
+                        callMethod("TriggerMode", [], true);
+                    });
+
+                document
+                    .getElementById("call-triggermode")
+                    .addEventListener("click", function () {
+                        callMethod("Triggermode", [], true);
+                    });
+
+                document
+                    .getElementById("arbitrary-form")
+                    .addEventListener("submit", function (event) {
+                        event.preventDefault();
+                        var name = document
+                            .getElementById("method-name")
+                            .value.trim();
+                        var args = parseArgs(
+                            document.getElementById("method-args").value,
+                        );
+
+                        if (!name) {
+                            logCall(
+                                "error",
+                                "(empty)",
+                                args,
+                                "enter a method name",
+                            );
+                            return;
+                        }
+
+                        callMethod(name, args, false);
+                    });
+
+                updateState();
+                setInterval(updateState, 2000);
+            })();
+        </script>
+    </body>
+</html>

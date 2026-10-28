@@ -1,0 +1,1018 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="color-scheme" content="dark" />
+        <title>MT90 nlScan method probe</title>
+        <style>
+            :root {
+                color-scheme: dark;
+                --bg: #0a0c0f;
+                --panel: #12161b;
+                --soft: #171d24;
+                --line: #27303a;
+                --text: #e9eef4;
+                --muted: #8d99a7;
+                --accent: #6ee7d8;
+                --warn: #fbbf24;
+                --danger: #f87171;
+                --ok: #86efac;
+                --mono:
+                    ui</title>-monospace, SFMono-Regular, Menlo, Consolas,
+                    monospace;
+                --sans:
+                    system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            }
+
+            * {
+                box-sizing: border-box;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            html,
+            body {
+                margin: 0;
+                min-height: 100%;
+            }
+
+            body {
+                background:
+                    radial-gradient(
+                        700px 380px at 8% -10%,
+                        rgba(110, 231, 216, 0.09),
+                        transparent 60%
+                    ),
+                    var(--bg);
+                color: var(--text);
+                font-family: var(--sans);
+                font-size: 15px;
+                line-height: 1.45;
+            }
+
+            main {
+                width: min(920px, calc(100% - 20px));
+                margin: 0 auto;
+                padding: 16px 0 32px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            h1 {
+                margin: 0;
+                font-size: 1.2rem;
+                letter-spacing: -0.01em;
+                line-height: 1.2;
+            }
+
+            h2 {
+                margin: 0 0 8px;
+                font-size: 0.72rem;
+                font-weight: 600;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: var(--muted);
+            }
+
+            p {
+                margin: 0;
+            }
+
+            .hint {
+                margin-top: 4px;
+                color: var(--accent);
+                font-size: 0.9rem;
+            }
+
+            .caution {
+                margin-top: 6px;
+                padding: 8px 10px;
+                border: 1px solid rgba(251, 191, 36, 0.4);
+                border-radius: 10px;
+                background: rgba(251, 191, 36, 0.08);
+                color: var(--warn);
+                font-size: 0.86rem;
+            }
+
+            .status {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px 18px;
+                padding: 9px 11px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: var(--soft);
+                color: var(--muted);
+                font-family: var(--mono);
+                font-size: 0.78rem;
+            }
+
+            .status strong {
+                color: var(--text);
+                font-weight: 600;
+            }
+
+            .panel {
+                padding: 11px;
+                border: 1px solid var(--line);
+                border-radius: 12px;
+                background: var(--panel);
+            }
+
+            pre {
+                margin: 0;
+                max-height: 60vh;
+                overflow: auto;
+                white-space: pre-wrap;
+                word-break: break-word;
+                color: #c7d2de;
+                font-family: var(--mono);
+                font-size: 0.76rem;
+                line-height: 1.5;
+            }
+
+            .pass {
+                color: var(--ok);
+            }
+
+            .fail {
+                color: var(--danger);
+            }
+
+            .note {
+                color: var(--warn);
+            }
+
+            footer {
+                color: var(--muted);
+                font-size: 0.72rem;
+            }
+
+            code {
+                font-family: var(--mono);
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <header>
+                <h1>nlScan method probe</h1>
+                <p class="hint">
+                    Sequenced call matrix — one <code>call</code> report per
+                    attempt, about 600&nbsp;ms apart.
+                </p>
+                <p class="caution">
+                    Heads up: some calls may beep, toggle the LED, or start a
+                    scan. Zero-argument reads only; no configuration values are
+                    passed.
+                </p>
+            </header>
+
+            <section class="status" aria-live="polite">
+                <span
+                    >progress: <strong id="status-progress">0/25</strong></span
+                >
+                <span
+                    >current:
+                    <strong id="status-current">starting…</strong></span
+                >
+                <span
+                    >last send: <strong id="status-send">not sent</strong></span
+                >
+            </section>
+
+            <section class="panel">
+                <h2>Call log</h2>
+                <pre id="log">waiting…</pre>
+            </section>
+
+            <footer>
+                <p>
+                    Reports post to <code>/__report</code>; the host probe
+                    writes them to <code>artifacts/runtime-probe.jsonl</code>.
+                </p>
+                <p>
+                    Optional preflight: append <code>?power=1</code> (or
+                    <code>?power=0</code>) to call <code>Power(1)</code> before
+                    the matrix. Boolean arguments reach this bridge as
+                    <code>0</code>, so <code>Power(true)</code> does not switch
+                    the scanner on.
+                </p>
+            </footer>
+        </main>
+
+        <script>
+            (function () {
+                "use strict";
+
+                var DELAY_MS = 600;
+                var START_DELAY_MS = 1200;
+                var MAX_LOG_LINES = 80;
+
+                var REPORT_URLS = buildReportUrls();
+                var startedAt = monotonic();
+                var seq = 0;
+                var callCount = 0;
+                var PREFLIGHT_POWER = readPowerParam();
+
+                // Trigger first: Trigger() is the known failure and is kept for
+                // the record. Reads are zero-argument only by design.
+                var MATRIX = [
+                    { phase: "trigger", method: "Trigger", args: [] },
+                    { phase: "trigger", method: "Trigger", args: [true] },
+                    { phase: "trigger", method: "Trigger", args: [false] },
+                    { phase: "trigger", method: "Trigger", args: [0] },
+                    { phase: "trigger", method: "Trigger", args: [1] },
+                    { phase: "trigger", method: "Trigger", args: ["trigger"] },
+
+                    { phase: "stop", method: "Stop", args: [] },
+                    { phase: "stop", method: "Stop", args: [true] },
+                    { phase: "stop", method: "Stop", args: [false] },
+
+                    { phase: "beep", method: "Beep", args: [] },
+                    { phase: "beep", method: "Beep", args: [true] },
+                    { phase: "beep", method: "Beep", args: [false] },
+                    { phase: "beep", method: "Beep", args: [0] },
+                    { phase: "beep", method: "Beep", args: [1] },
+
+                    { phase: "led", method: "LED", args: [true] },
+                    { phase: "led", method: "LED", args: [false] },
+                    { phase: "led", method: "LED", args: [0] },
+                    { phase: "led", method: "LED", args: [1] },
+
+                    { phase: "read", method: "TriggerMode", args: [] },
+                    { phase: "read", method: "Timeout", args: [] },
+                    { phase: "read", method: "Interval", args: [] },
+                    { phase: "read", method: "RepeatInterval", args: [] },
+                    { phase: "read", method: "Scanmode", args: [] },
+                    { phase: "read", method: "BarcodeConfig", args: [] },
+                    { phase: "read", method: "Initialize", args: [] },
+                ];
+
+                var state = {
+                    done: false,
+                    lastSend: "not sent",
+                    log: [],
+                };
+
+                function el(id) {
+                    try {
+                        return document.getElementById(id);
+                    } catch (e) {
+                        return null;
+                    }
+                }
+
+                function monotonic() {
+                    try {
+                        if (
+                            window.performance &&
+                            typeof window.performance.now === "function"
+                        ) {
+                            return window.performance.now();
+                        }
+                    } catch (e) {
+                        // Fall back to wall-clock milliseconds.
+                    }
+                    return Date.now();
+                }
+
+                function strErr(e) {
+                    try {
+                        if (e && typeof e === "object") {
+                            var message = e.message
+                                ? String(e.message)
+                                : String(e);
+                            var name = e.name ? String(e.name) : "";
+                            if (name && message.indexOf(name) !== 0) {
+                                return name + ": " + message;
+                            }
+                            return message;
+                        }
+                        return String(e);
+                    } catch (inner) {
+                        return "unknown error";
+                    }
+                }
+
+                function truncate(text, limit) {
+                    text = String(text);
+                    if (text.length <= limit) return text;
+                    return (
+                        text.slice(0, limit) +
+                        "…[+" +
+                        (text.length - limit) +
+                        "]"
+                    );
+                }
+
+                function safeJson(value) {
+                    try {
+                        var text = JSON.stringify(value);
+                        return text === undefined ? String(value) : text;
+                    } catch (e) {
+                        return "[unserializable: " + strErr(e) + "]";
+                    }
+                }
+
+                function safeHref() {
+                    try {
+                        return String(window.location.href);
+                    } catch (e) {
+                        return "[unavailable]";
+                    }
+                }
+
+                function safeUA() {
+                    try {
+                        return String(window.navigator.userAgent);
+                    } catch (e) {
+                        return "[unavailable]";
+                    }
+                }
+
+                // JSON-safe copy with depth, list and circular limits. A throwing
+                // getter or circular reference becomes a marker, never an abort.
+                function safeValue(value, depth, seen) {
+                    depth = typeof depth === "number" ? depth : 3;
+                    seen = seen || [];
+
+                    if (value === null) return null;
+
+                    var type = typeof value;
+                    if (type === "undefined") return "[undefined]";
+                    if (type === "string") return truncate(value, 2000);
+                    if (type === "number") {
+                        return isFinite(value) ? value : String(value);
+                    }
+                    if (type === "boolean") return value;
+                    if (type === "function") return "[function]";
+                    if (type === "symbol" || type === "bigint") {
+                        return String(value);
+                    }
+
+                    if (seen.indexOf(value) !== -1) return "[circular]";
+                    if (depth <= 0) return "[object]";
+
+                    seen.push(value);
+                    try {
+                        if (
+                            Object.prototype.toString.call(value) ===
+                            "[object Array]"
+                        ) {
+                            var list = [];
+                            var limit = Math.min(value.length, 50);
+                            for (var i = 0; i < limit; i++) {
+                                try {
+                                    list.push(
+                                        safeValue(value[i], depth - 1, seen),
+                                    );
+                                } catch (inner) {
+                                    list.push("[throws]");
+                                }
+                            }
+                            return list;
+                        }
+
+                        var out = {};
+                        var keys = [];
+                        try {
+                            keys = Object.keys(value).slice(0, 50);
+                        } catch (inner) {
+                            return "[unserializable: " + strErr(inner) + "]";
+                        }
+                        for (var k = 0; k < keys.length; k++) {
+                            var key = keys[k];
+                            try {
+                                out[key] = safeValue(
+                                    value[key],
+                                    depth - 1,
+                                    seen,
+                                );
+                            } catch (inner) {
+                                out[key] = "[throws]";
+                            }
+                        }
+                        return out;
+                    } catch (e) {
+                        return "[unserializable: " + strErr(e) + "]";
+                    } finally {
+                        seen.pop();
+                    }
+                }
+
+                function describeMember(owner, key) {
+                    var value;
+                    try {
+                        value = owner[key];
+                    } catch (e) {
+                        return { type: "[throws]", error: strErr(e) };
+                    }
+
+                    var type = value === null ? "null" : typeof value;
+                    var out = { type: type };
+
+                    if (type === "function") {
+                        try {
+                            out.arity = value.length;
+                        } catch (e) {
+                            out.arity = null;
+                        }
+                        return out;
+                    }
+
+                    if (
+                        type === "string" ||
+                        type === "number" ||
+                        type === "boolean"
+                    ) {
+                        out.value = safeValue(value, 0, []);
+                        return out;
+                    }
+
+                    if (type === "object") {
+                        try {
+                            out.keys = Object.keys(value).slice(0, 20);
+                        } catch (e) {
+                            out.keys = "[throws]";
+                        }
+                    }
+
+                    return out;
+                }
+
+                function collectHello() {
+                    var report = {
+                        kind: "hello",
+                        page: "method-probe",
+                        reason: "load",
+                        ts: new Date().toISOString(),
+                        t: elapsed(),
+                        href: safeHref(),
+                        userAgent: safeUA(),
+                        nlScan: {
+                            exists: false,
+                            type: "undefined",
+                            keys: [],
+                            members: {},
+                        },
+                    };
+
+                    var scanner;
+                    try {
+                        scanner = window.nlScan;
+                    } catch (e) {
+                        report.nlScan.type = "[throws]";
+                        report.nlScan.error = strErr(e);
+                        return report;
+                    }
+
+                    if (scanner === undefined || scanner === null) {
+                        report.nlScan.type =
+                            scanner === null ? "null" : "undefined";
+                        return report;
+                    }
+
+                    report.nlScan.exists = true;
+                    report.nlScan.type = typeof scanner;
+
+                    var keys = [];
+                    try {
+                        keys = Object.keys(scanner);
+                    } catch (e) {
+                        report.nlScan.keysError = strErr(e);
+                    }
+                    report.nlScan.keys = keys;
+
+                    var members = {};
+                    for (var i = 0; i < keys.length; i++) {
+                        var key = keys[i];
+                        try {
+                            members[key] = describeMember(scanner, key);
+                        } catch (e) {
+                            members[key] = {
+                                type: "[throws]",
+                                error: strErr(e),
+                            };
+                        }
+                    }
+                    report.nlScan.members = members;
+                    return report;
+                }
+
+                function elapsed() {
+                    return Math.round((monotonic() - startedAt) * 10) / 10;
+                }
+
+                function findCallable(name) {
+                    var scanner;
+                    try {
+                        scanner = window.nlScan;
+                    } catch (e) {
+                        scanner = undefined;
+                    }
+
+                    if (scanner !== undefined && scanner !== null) {
+                        try {
+                            if (name in scanner) {
+                                return {
+                                    owner: scanner,
+                                    source: "nlScan",
+                                    fn: scanner[name],
+                                };
+                            }
+                        } catch (e) {
+                            // A throwing lookup falls through to window.
+                        }
+                    }
+
+                    try {
+                        if (name in window) {
+                            return {
+                                owner: window,
+                                source: "window",
+                                fn: window[name],
+                            };
+                        }
+                    } catch (e) {
+                        // Not reachable through either owner.
+                    }
+                    return null;
+                }
+
+                function runOne(spec, isPreflight) {
+                    if (!isPreflight) seq += 1;
+
+                    var report = {
+                        kind: "call",
+                        seq: isPreflight ? 0 : seq,
+                        t: elapsed(),
+                        ts: new Date().toISOString(),
+                        phase: spec.phase,
+                        method: spec.method,
+                        args: safeValue(spec.args, 1, []),
+                    };
+
+                    var found = null;
+                    try {
+                        found = findCallable(spec.method);
+                    } catch (e) {
+                        report.lookupError = strErr(e);
+                    }
+
+                    if (!found) {
+                        report.found = false;
+                        report.ok = false;
+                        report.result = "[missing]";
+                        report.error = "not found on nlScan or window";
+                    } else {
+                        report.found = true;
+                        report.source = found.source;
+                        report.fnType = typeof found.fn;
+
+                        if (typeof found.fn !== "function") {
+                            report.ok = false;
+                            report.result = "[not-a-function]";
+                            report.error =
+                                "member is " +
+                                typeof found.fn +
+                                ", not a function";
+                        } else {
+                            try {
+                                var result = found.fn.apply(
+                                    found.owner,
+                                    spec.args,
+                                );
+                                report.ok = true;
+                                report.resultType =
+                                    result === null ? "null" : typeof result;
+                                report.result = safeValue(result, 3, []);
+                            } catch (e) {
+                                report.ok = false;
+                                report.result = "[throws]";
+                                report.error = strErr(e);
+                                try {
+                                    report.errorName =
+                                        e && e.name ? String(e.name) : null;
+                                } catch (inner) {
+                                    report.errorName = null;
+                                }
+                            }
+                        }
+                    }
+
+                    callCount += isPreflight ? 0 : 1;
+                    if (isPreflight) report.preflight = true;
+                    postReport(report);
+                    logCall(report);
+                    updateStatus(spec);
+                    return report;
+                }
+
+                function logCall(report) {
+                    var argText = "";
+                    if (report.args && report.args.length) {
+                        argText = safeJson(report.args).slice(1, -1);
+                    }
+                    var prefix =
+                        "#" +
+                        (report.seq < 10 ? "0" : "") +
+                        report.seq +
+                        " " +
+                        report.method +
+                        "(" +
+                        argText +
+                        ")";
+
+                    if (report.ok) {
+                        logLine(
+                            prefix +
+                                " → ok: " +
+                                truncate(safeJson(report.result), 120),
+                            "pass",
+                        );
+                    } else {
+                        logLine(
+                            prefix +
+                                " → " +
+                                (report.error || "[failed]") +
+                                (report.result && report.result !== "[throws]"
+                                    ? " (" + report.result + ")"
+                                    : ""),
+                            "fail",
+                        );
+                    }
+                }
+
+                function finish() {
+                    state.done = true;
+                    postReport({
+                        kind: "done",
+                        ts: new Date().toISOString(),
+                        t: elapsed(),
+                        calls: callCount,
+                        expected: MATRIX.length,
+                        elapsedMs: Math.round(elapsed()),
+                    });
+                    logLine(
+                        "matrix complete: " +
+                            callCount +
+                            "/" +
+                            MATRIX.length +
+                            " calls in " +
+                            Math.round(elapsed() / 1000) +
+                            "s",
+                        "note",
+                    );
+                    updateStatus(null);
+                }
+
+                function runMatrix() {
+                    var index = 0;
+
+                    function step() {
+                        if (index >= MATRIX.length) {
+                            finish();
+                            return;
+                        }
+
+                        var spec = MATRIX[index];
+                        index += 1;
+
+                        try {
+                            runOne(spec);
+                        } catch (e) {
+                            // runOne is defensive, but never let the matrix die.
+                            seq += 1;
+                            var fallback = {
+                                kind: "call",
+                                seq: seq,
+                                t: elapsed(),
+                                ts: new Date().toISOString(),
+                                phase: spec.phase,
+                                method: spec.method,
+                                args: safeValue(spec.args, 1, []),
+                                ok: false,
+                                result: "[probe-error]",
+                                error: strErr(e),
+                            };
+                            postReport(fallback);
+                            logLine(
+                                "#" +
+                                    seq +
+                                    " " +
+                                    spec.method +
+                                    " → harness error: " +
+                                    strErr(e),
+                                "fail",
+                            );
+                            updateStatus(spec);
+                        }
+
+                        setTimeout(step, DELAY_MS);
+                    }
+
+                    step();
+                }
+
+                // Report transport: relative URL first, then an http(s) fallback
+                // when the kiosk loaded us through newlandhttp(s).
+                function buildReportUrls() {
+                    var urls = ["/__report"];
+                    try {
+                        var protocol = String(window.location.protocol || "");
+                        var host = String(window.location.host || "");
+                        if (
+                            host &&
+                            (protocol === "newlandhttp:" ||
+                                protocol === "newlandhttps:")
+                        ) {
+                            var scheme =
+                                protocol === "newlandhttps:"
+                                    ? "https:"
+                                    : "http:";
+                            var absolute = scheme + "//" + host + "/__report";
+                            if (absolute !== urls[0]) urls.push(absolute);
+                        }
+                    } catch (e) {
+                        // Keep the relative URL only.
+                    }
+                    return urls;
+                }
+
+                function xhrPost(url, body, onOk, onFail) {
+                    try {
+                        var xhr = new XMLHttpRequest();
+                        xhr.open("POST", url, true);
+                        xhr.setRequestHeader(
+                            "Content-Type",
+                            "application/json",
+                        );
+                        xhr.timeout = 5000;
+                        xhr.onreadystatechange = function () {
+                            if (xhr.readyState !== 4) return;
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                onOk(xhr.status);
+                            } else {
+                                onFail(xhr.status);
+                            }
+                        };
+                        xhr.onerror = function () {
+                            onFail(0);
+                        };
+                        xhr.ontimeout = function () {
+                            onFail(-1);
+                        };
+                        xhr.send(body);
+                    } catch (e) {
+                        onFail(-2);
+                    }
+                }
+
+                function postReport(report) {
+                    var body;
+                    try {
+                        if (!report || typeof report !== "object") {
+                            report = { kind: "error", error: "bad report" };
+                        }
+                        if (!report.ts) report.ts = new Date().toISOString();
+                        body = JSON.stringify(report);
+                    } catch (e) {
+                        body = JSON.stringify({
+                            kind: "error",
+                            ts: new Date().toISOString(),
+                            error: "could not serialize report: " + strErr(e),
+                        });
+                    }
+
+                    var finished = false;
+                    var index = 0;
+
+                    function ok(status) {
+                        if (finished) return;
+                        finished = true;
+                        state.lastSend = "ok (" + status + ")";
+                        updateStatus(null);
+                    }
+
+                    function fail(message) {
+                        if (finished) return;
+                        finished = true;
+                        state.lastSend = "failed: " + message;
+                        updateStatus(null);
+                        logLine("report send failed: " + message, "fail");
+                    }
+
+                    function attempt() {
+                        if (finished) return;
+                        if (index >= REPORT_URLS.length) {
+                            fail("all transports failed");
+                            return;
+                        }
+
+                        var url = REPORT_URLS[index];
+                        var first = index === 0;
+                        index += 1;
+
+                        if (first && typeof window.fetch === "function") {
+                            try {
+                                window
+                                    .fetch(url, {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                        },
+                                        body: body,
+                                    })
+                                    .then(function (response) {
+                                        if (response && response.ok) {
+                                            ok(response.status);
+                                        } else if (
+                                            response &&
+                                            response.status === 0
+                                        ) {
+                                            attempt();
+                                        } else {
+                                            fail(
+                                                "http " +
+                                                    (response &&
+                                                        response.status),
+                                            );
+                                        }
+                                    })
+                                    .catch(function () {
+                                        attempt();
+                                    });
+                            } catch (e) {
+                                attempt();
+                            }
+                            return;
+                        }
+
+                        xhrPost(
+                            url,
+                            body,
+                            function (status) {
+                                ok(status);
+                            },
+                            function (status) {
+                                if (
+                                    status === 0 ||
+                                    status === -1 ||
+                                    status === -2
+                                ) {
+                                    attempt();
+                                } else {
+                                    fail("http " + status);
+                                }
+                            },
+                        );
+                    }
+
+                    attempt();
+                }
+
+                function updateStatus(current) {
+                    var progress = el("status-progress");
+                    if (progress) {
+                        progress.textContent =
+                            String(callCount) + "/" + String(MATRIX.length);
+                    }
+
+                    var currentEl = el("status-current");
+                    if (currentEl) {
+                        if (state.done) {
+                            currentEl.textContent = "done";
+                        } else if (current && current.method) {
+                            currentEl.textContent =
+                                current.method +
+                                "(" +
+                                (current.args && current.args.length
+                                    ? safeJson(current.args).slice(1, -1)
+                                    : "") +
+                                ")";
+                        }
+                    }
+
+                    var sendEl = el("status-send");
+                    if (sendEl) sendEl.textContent = state.lastSend;
+                }
+
+                function renderLog() {
+                    var logEl = el("log");
+                    if (!logEl) return;
+                    logEl.textContent = state.log.join("\n");
+                    try {
+                        logEl.scrollTop = logEl.scrollHeight;
+                    } catch (e) {}
+                }
+
+                function logLine(message, cls) {
+                    var stamp = "";
+                    try {
+                        stamp = new Date().toISOString().slice(11, 19);
+                    } catch (e) {}
+                    var prefix = stamp ? stamp + " " : "";
+                    var suffix = cls ? " [" + cls + "]" : "";
+                    state.log.push(prefix + message + suffix);
+                    if (state.log.length > MAX_LOG_LINES) {
+                        state.log.splice(0, state.log.length - MAX_LOG_LINES);
+                    }
+                    renderLog();
+                }
+
+                function readPowerParam() {
+                    try {
+                        var search = String(window.location.search || "");
+                        var match = /[?&]power=([01])(?:&|$)/.exec(search);
+                        if (!match) return null;
+                        return Number(match[1]);
+                    } catch (e) {
+                        return null;
+                    }
+                }
+
+                function boot() {
+                    renderLog();
+                    updateStatus(null);
+                    logLine("page loaded", "note");
+
+                    // Hello first, before any call can disturb bridge state.
+                    try {
+                        postReport(collectHello());
+                    } catch (e) {
+                        logLine("hello probe failed: " + strErr(e), "fail");
+                    }
+
+                    var matrixDelay = START_DELAY_MS;
+
+                    if (PREFLIGHT_POWER !== null) {
+                        matrixDelay = START_DELAY_MS + 600;
+                        logLine(
+                            "preflight: Power(" +
+                                PREFLIGHT_POWER +
+                                ") in 600ms",
+                            "note",
+                        );
+                        setTimeout(function () {
+                            try {
+                                runOne(
+                                    {
+                                        phase: "preflight",
+                                        method: "Power",
+                                        args: [PREFLIGHT_POWER],
+                                    },
+                                    true,
+                                );
+                            } catch (e) {
+                                logLine(
+                                    "preflight failed: " + strErr(e),
+                                    "fail",
+                                );
+                            }
+                        }, 600);
+                    }
+
+                    logLine(
+                        "matrix will start in " +
+                            Math.round(matrixDelay / 1000) +
+                            "s",
+                        "note",
+                    );
+                    setTimeout(function () {
+                        try {
+                            runMatrix();
+                        } catch (e) {
+                            logLine(
+                                "matrix failed to start: " + strErr(e),
+                                "fail",
+                            );
+                        }
+                    }, matrixDelay);
+                }
+
+                try {
+                    window.addEventListener("error", function (event) {
+                        try {
+                            logLine(
+                                "js error: " +
+                                    String(event && event.message) +
+                                    (event && event.lineno
+                                        ? " @" + event.lineno
+                                        : ""),
+                                "fail",
+                            );
+                        } catch (e) {}
+                    });
+                } catch (e) {}
+
+                try {
+                    boot();
+                } catch (e) {
+                    logLine("boot failed: " + strErr(e), "fail");
+                }
+            })();
+        </script>
+    </body>
+</html>

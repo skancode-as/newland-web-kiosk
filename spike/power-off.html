@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title></title>Newland MT90 · scanner power off</title>
+        <style>
+            :root {
+                color-scheme: light dark;
+            }
+            body {
+                font:
+                    16px/1.5 system-ui,
+                    sans-serif;
+                margin: 0;
+                padding: 24px;
+                max-width: 720px;
+            }
+            h1 {
+                font-size: 20px;
+                margin: 0 0 4px;
+            }
+            p {
+                margin: 0 0 20px;
+                opacity: 0.7;
+            }
+            ol {
+                margin: 0;
+                padding-left: 20px;
+            }
+            li {
+                margin: 16px 0;
+            }
+            .name {
+                font-family: ui-monospace, monospace;
+                font-weight: 600;
+            }
+            .ok {
+                color: #1a7f37;
+            }
+            .fail {
+                color: #b42318;
+            }
+            pre {
+                margin: 6px 0 0;
+                padding: 8px 10px;
+                background: rgba(127, 127, 127, 0.14);
+                border-radius: 6px;
+                font-size: 13px;
+                white-space: pre-wrap;
+                word-break: break-word;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Scanner</h1> power off</h1>
+        <p>Stop()</p> with no arguments, then Power(0). No callbacks, no other settings.</p>
+        <ol id="results"></ol>
+
+        <script>
+            (function () {
+                "use strict";
+
+                var seq = 0;
+                var startedAt = Date.now();
+
+                function el(id) {
+                    return document.getElementById(id);
+                }
+
+                function describe(value) {
+                    try {
+                        if (value === undefined) return "[undefined]";
+                        var text = JSON.stringify(value);
+                        return text === undefined ? String(value) : text;
+                    } catch (e) {
+                        return "[unserializable: " + e + "]";
+                    }
+                }
+
+                function reportUrls() {
+                    // The kiosk loads this page as newlandhttp://; plain http is
+                    // the fallback when the relative path cannot be used.
+                    var urls = ["/__report"];
+                    try {
+                        var protocol = String(window.location.protocol || "");
+                        var host = String(window.location.host || "");
+                        if (
+                            host &&
+                            (protocol === "newlandhttp:" ||
+                                protocol === "newlandhttps:")
+                        ) {
+                            var absolute =
+                                (protocol === "newlandhttps:"
+                                    ? "https:"
+                                    : "http:") +
+                                "//" +
+                                host +
+                                "/__report";
+                            if (absolute !== urls[0]) urls.push(absolute);
+                        }
+                    } catch (e) {
+                        // Keep the relative URL only.
+                    }
+                    return urls;
+                }
+
+                function post(report, done) {
+                    var body;
+                    try {
+                        if (!report.ts) report.ts = new Date().toISOString();
+                        body = JSON.stringify(report);
+                    } catch (e) {
+                        body = JSON.stringify({
+                            kind: "error",
+                            ts: new Date().toISOString(),
+                            error: "could not serialize report: " + e,
+                        });
+                    }
+
+                    var urls = reportUrls();
+                    var index = 0;
+                    var finished = false;
+
+                    function finish(ok) {
+                        if (finished) return;
+                        finished = true;
+                        if (done) done(ok);
+                    }
+
+                    function attempt() {
+                        if (finished) return;
+                        if (index >= urls.length) {
+                            finish(false);
+                            return;
+                        }
+
+                        var url = urls[index];
+                        index += 1;
+
+                        try {
+                            var xhr = new XMLHttpRequest();
+                            xhr.open("POST", url, true);
+                            xhr.setRequestHeader(
+                                "Content-Type",
+                                "application/json",
+                            );
+                            xhr.timeout = 5000;
+                            xhr.onreadystatechange = function () {
+                                if (xhr.readyState !== 4) return;
+                                if (xhr.status >= 200 && xhr.status < 300) {
+                                    finish(true);
+                                } else if (xhr.status === 0) {
+                                    attempt();
+                                } else {
+                                    finish(false);
+                                }
+                            };
+                            xhr.onerror = attempt;
+                            xhr.ontimeout = attempt;
+                            xhr.send(body);
+                        } catch (e) {
+                            attempt();
+                        }
+                    }
+
+                    attempt();
+                }
+
+                function helloReport() {
+                    var scan = null;
+                    try {
+                        scan = window.nlScan;
+                    } catch (e) {
+                        // Leave scan null.
+                    }
+
+                    var info = {
+                        exists:
+                            typeof scan !== "undefined" && scan !== null,
+                        type: typeof scan,
+                    };
+                    try {
+                        if (scan) info.keys = Object.keys(scan);
+                    } catch (e) {
+                        info.keysError = String(e);
+                    }
+
+                    return {
+                        kind: "hello",
+                        page: "power-off",
+                        reason: "load",
+                        href: String(
+                            (window.location && window.location.href) || "",
+                        ),
+                        userAgent: String(window.navigator.userAgent),
+                        nlScan: info,
+                    };
+                }
+
+                function show(method, ok, detail) {
+                    var list = el("results");
+                    if (!list) return;
+
+                    var item = document.createElement("li");
+                    var name = document.createElement("span");
+                    name.className = "name";
+                    name.textContent = method;
+
+                    var verdict = document.createElement("span");
+                    verdict.className = ok ? "ok" : "fail";
+                    verdict.textContent = ok ? "  ok" : "  failed";
+
+                    var output = document.createElement("pre");
+                    output.textContent = detail;
+
+                    item.appendChild(name);
+                    item.appendChild(verdict);
+                    item.appendChild(output);
+                    list.appendChild(item);
+                }
+
+                function call(method, args, next) {
+                    var report = {
+                        kind: "call",
+                        seq: ++seq,
+                        method: method,
+                        args: args,
+                    };
+                    var detail;
+
+                    try {
+                        var fn = window.nlScan ? window.nlScan[method] : null;
+                        var value = fn.apply(window.nlScan, args);
+                        report.ok = true;
+                        report.result = describe(value);
+                        report.resultType = typeof value;
+                        detail = "returned " + report.result;
+                    } catch (e) {
+                        report.ok = false;
+                        report.error =
+                            (e && e.name ? e.name + ": " : "") +
+                            (e && e.message ? e.message : String(e));
+                        detail = report.error;
+                    }
+
+                    report.ts = new Date().toISOString();
+                    show(method + "(" + args.join(", ") + ")", report.ok, detail);
+
+                    post(report, function () {
+                        if (next) next();
+                    });
+                }
+
+                function boot() {
+                    post(helloReport(), function () {
+                        setTimeout(function () {
+                            call("Stop", [], function () {
+                                setTimeout(function () {
+                                    call("Power", [0], function () {
+                                        post({
+                                            kind: "done",
+                                            calls: seq,
+                                            elapsedMs:
+                                                Date.now() - startedAt,
+                                        });
+                                    });
+                                }, 300);
+                            });
+                        }, 300);
+                    });
+                }
+
+                try {
+                    boot();
+                } catch (e) {
+                    show("boot", false, String(e));
+                }
+            })();
+        </script>
+    </body>
+</html>
