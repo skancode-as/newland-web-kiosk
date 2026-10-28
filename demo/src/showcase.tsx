@@ -10,9 +10,9 @@ import {
   useScanner,
   type BarcodeScanEvent,
   type NfcEvent,
-} from 'newland-web-kiosk';
-import { installMockNlScan } from 'newland-web-kiosk/mock';
-import type { MockNlScanController } from 'newland-web-kiosk/mock';
+} from '@scancode-as/newland-web-kiosk';
+import { installMockNlScan } from '@scancode-as/newland-web-kiosk/mock';
+import type { MockNlScanController } from '@scancode-as/newland-web-kiosk/mock';
 import './showcase.css';
 
 /* -------------------------------------------------------------------------- */

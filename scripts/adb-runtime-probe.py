@@ -11,7 +11,7 @@ never force-stops the kiosk. Its only device-side changes are a temporary
 
 Usage:
     python3 scripts/adb-runtime-probe.py
-    python3 scripts/adb-runtime-probe.py --serial MT9055W4EL00736
+    python3 scripts/adb-runtime-probe.py --serial YOUR_DEVICE_SERIAL
     python3 scripts/adb-runtime-probe.py --port 8765 --wait 60
     python3 scripts/adb-runtime-probe.py --page /spike/method-probe.html
     ADB=/opt/platform-tools/adb python3 scripts/adb-runtime-probe.py

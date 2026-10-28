@@ -8,11 +8,11 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
     alias: [
       {
-        find: 'newland-web-kiosk/mock',
+        find: '@scancode-as/newland-web-kiosk/mock',
         replacement: fileURLToPath(new URL('../src/mock/index.ts', import.meta.url)),
       },
       {
-        find: 'newland-web-kiosk',
+        find: '@scancode-as/newland-web-kiosk',
         replacement: fileURLToPath(new URL('../src/index.ts', import.meta.url)),
       },
     ],

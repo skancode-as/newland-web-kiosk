@@ -8,8 +8,8 @@ import {
   useScanner,
   type BarcodeScanEvent,
   type NfcEvent,
-} from 'newland-web-kiosk';
-import { installMockNlScan } from 'newland-web-kiosk/mock';
+} from '@scancode-as/newland-web-kiosk';
+import { installMockNlScan } from '@scancode-as/newland-web-kiosk/mock';
 
 type MockController = ReturnType<typeof installMockNlScan>;
 
@@ -252,7 +252,7 @@ export default function App({ mock }: AppProps) {
     <div className="app">
       <header className="hero">
         <div>
-          <p className="eyebrow">newland-web-kiosk</p>
+          <p className="eyebrow">@scancode-as/newland-web-kiosk</p>
           <h1>Web Kiosk hardware harness</h1>
           <p className="hero__copy">
             Live scanner, NFC and device controls for the Newland Web Kiosk bridge. On a desktop

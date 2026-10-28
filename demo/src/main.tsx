@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { KioskProvider, isKiosk } from 'newland-web-kiosk';
-import { installMockNlScan } from 'newland-web-kiosk/mock';
+import { KioskProvider, isKiosk } from '@scancode-as/newland-web-kiosk';
+import { installMockNlScan } from '@scancode-as/newland-web-kiosk/mock';
 import App from './App';
 import './styles.css';
 

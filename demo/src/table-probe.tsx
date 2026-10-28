@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { useScanner } from "newland-web-kiosk";
+import { useScanner } from "@scancode-as/newland-web-kiosk";
 
 /**
  * Standalone probe for the active native BarcodeConfig table.

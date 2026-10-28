@@ -5,3 +5,7 @@ demo/dist
 .DS_Store
 artifacts/
 *.tsbuildinfo
+newland-web-kiosk_user-guide_v221.pdf
+plan.md
+.env.local
+.env.*.local

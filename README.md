@@ -1,12 +1,17 @@
-# newland-web-kiosk
+# @scancode-as/newland-web-kiosk
 
-A small, private React library for Newland Web Kiosk devices. It wraps the native
-`window.nlScan` bridge in typed functions and turns the kiosk's global callback
-functions into React subscriptions.
+A small React library for Newland Web Kiosk devices, published publicly on npm.
+It wraps the native `window.nlScan` bridge in typed functions and turns the
+kiosk's global callback functions into React subscriptions.
 
 The package is intentionally narrow: barcode scanning, device information and
 basic scanner control. NFC is supported; NHub (Bluetooth scanners) and NQuire
 (GPIO and logo LED) are **not implemented yet**.
+
+> **Disclaimer:** This is an unofficial integration. It is not affiliated with,
+> sponsored by, or endorsed by Newland. Newland and MT90 are trademarks of their
+> respective owners. Vendor documentation and reverse-engineered artifacts are
+> not included in this repository or the published package.
 
 ## What it wraps
 
@@ -35,9 +40,34 @@ Subscriptions are the exception to "no-op": `useBarcodeScan` and `useNfc` instal
 their global wrappers as soon as they subscribe, even outside the kiosk. With no
 native bridge behind them, those wrappers simply never receive device events.
 
-## Install and develop
+## Install
 
-The package is private and is not published to public npm.
+Install from the public npm registry:
+
+```bash
+npm install @scancode-as/newland-web-kiosk
+```
+
+As a fallback, install a pinned Git tag directly from GitHub:
+
+```bash
+npm install github:scancode-as/web-kiosk-scanning#v0.1.0
+```
+
+Or in `package.json`:
+
+```json
+"@scancode-as/newland-web-kiosk": "github:scancode-as/web-kiosk-scanning#v0.1.0"
+```
+
+Git installs run the package's `prepare` script, which runs `npm run build`, so
+`dist/` is generated during installation. The package declares `react` as a peer
+dependency (`>=18`); the host application must provide React.
+
+## Develop
+
+The repository is a workspace with the library at the root and the demo in
+`demo/`.
 
 ```bash
 npm install          # install workspace dependencies
@@ -49,20 +79,24 @@ npm run dev          # start the Vite demo on http://localhost:5173
 npm run demo:build   # production build of the demo
 ```
 
-To consume the package from another project, build it first and install the
-folder or a packed tarball:
+## Releasing
 
-```bash
-npm run build
-npm pack
-# then in the consuming project:
-npm install ../newland-web-kiosk-0.1.0.tgz
-```
+The package publishes to the public npm registry from the `scancode-as` GitHub
+organization. The organization must own (or create) the `@scancode-as` npm
+scope, and the repository must define an `NPM_TOKEN` secret with publish rights
+to that scope. The publish workflow uses that token; no registry token is
+committed to the repository.
 
-The package declares `react` as a peer dependency (`>=18`) and stays `private`
-in `package.json`. Use the packed tarball flow above to consume it from another
-project. Publishing it to a company registry would require removing
-`"private": true`; it is not intended for the public npm registry.
+To release:
+
+1. Run `npm version patch` (or `minor` / `major`). This updates `package.json`
+   and creates a `vX.Y.Z` tag.
+2. Push the commit and tag: `git push --follow-tags`.
+3. The `publish.yml` GitHub Actions workflow runs on `v*` tags, then runs
+   `npm ci`, `npm test`, `npm run build` and `npm publish --access public`.
+
+`prepublishOnly` also runs typecheck, tests and the build before any manual
+`npm publish`.
 
 ## Quick start
 
@@ -73,7 +107,7 @@ true and `isKiosk()` is true at that moment.
 ```tsx
 // main.tsx
 import { createRoot } from "react-dom/client";
-import { KioskProvider } from "newland-web-kiosk";
+import { KioskProvider } from "@scancode-as/newland-web-kiosk";
 import { App } from "./App";
 
 createRoot(document.getElementById("root")!).render(
@@ -99,7 +133,7 @@ import {
   useDeviceInfo,
   useNfc,
   useScanner,
-} from "newland-web-kiosk";
+} from "@scancode-as/newland-web-kiosk";
 
 export function App() {
   const device = useDeviceInfo();
@@ -155,7 +189,7 @@ import {
   type SwitchValue,
   type UseScannerResult,
   type UseDeviceInfoResult,
-} from "newland-web-kiosk";
+} from "@scancode-as/newland-web-kiosk";
 ```
 
 | Export                    | Description                                                                                    |
@@ -170,7 +204,7 @@ import {
 
 The root entry exports the items above (plus their types) and nothing from the
 internal registry or test helpers. Mock helpers live at
-`newland-web-kiosk/mock`.
+`@scancode-as/newland-web-kiosk/mock`.
 
 `useScanner()` exposes:
 
@@ -264,7 +298,7 @@ type NfcEvent = {
 The mock implements only `window.nlScan`. The callback globals (`nlBarcode`,
 `nlNFC`) are installed by the registry when the corresponding hook subscribes,
 not by the mock. The mock is part of the same package and is consumed through
-the `newland-web-kiosk/mock` subpath; no separate install is needed.
+the `@scancode-as/newland-web-kiosk/mock` subpath; no separate install is needed.
 
 Install the mock **before React mounts** so `KioskProvider` sees a bridge when it
 runs its mount effect and `useDeviceInfo()` reads the mock device info when it
@@ -274,7 +308,7 @@ mock is installed later (see [Late bridge injection](#late-bridge-injection)).
 not during server rendering.
 
 ```ts
-import { installMockNlScan } from "newland-web-kiosk/mock";
+import { installMockNlScan } from "@scancode-as/newland-web-kiosk/mock";
 
 const mock = installMockNlScan({
   deviceInfo: {
@@ -438,8 +472,9 @@ npx serve spike
 python3 -m http.server 8080 --directory spike
 ```
 
-Create a `newlandhttps://` shortcut pointing at the served URL. See the Web
-Kiosk guide for the shortcut syntax and URL options. Do not open the file through
+Create a `newlandhttps://` shortcut pointing at the served URL. See the internal
+Web Kiosk vendor guide (not included) for the shortcut syntax and URL options.
+Do not open the file through
 `file://`; the kiosk shortcut needs an HTTP(S) URL.
 
 The page records:
@@ -508,7 +543,7 @@ registry, so registry behavior can be tested in a plain browser-like
 environment. The **React layer** is thin: hooks subscribe to the core, expose
 `isSupported` where relevant, and clean up on unmount; the provider issues its
 one-shot commands. The **mock subpath** is a separate entry point
-(`newland-web-kiosk/mock`) so production bundles do not pull in test helpers.
+(`@scancode-as/newland-web-kiosk/mock`) so production bundles do not pull in test helpers.
 
 The callback registry is the important piece. The kiosk can only call one global
 `nlBarcode`, so the registry installs one wrapper and fans each parsed event out
@@ -552,7 +587,8 @@ zero-argument function and uses its string or number return value.
 `useDeviceInfo().isSupported` is `true` whenever the bridge exists, even if none
 of the expected fields are found.
 
-`TriggerMode` versus `Triggermode` was a hardware unknown: the guide documents
+`TriggerMode` versus `Triggermode` was a hardware unknown: the internal vendor
+guide documents
 `Triggermode`, while its sample uses `TriggerMode`. A 2.21 MT90 exposes exactly
 `TriggerMode`, and the resolver still generates `Triggermode` as the second
 casing variant, so both builds work without configuration.
@@ -661,9 +697,10 @@ page to compare wedge behavior with the callback installed and removed.
 
 `react`, `react-dom` and the JSX runtimes are external, and `react` is declared
 as a peer dependency. The package exposes `.` and `./mock` through `exports`,
-ships only `dist`, and remains `private: true`. CJS files use the `.cjs`
-extension; ESM files use `.js`. The mock is a separate subpath
-(`newland-web-kiosk/mock`), so importing the root entry does not pull it in.
+ships only `dist`, and publishes publicly with `publishConfig.access: "public"`.
+CJS files use the `.cjs` extension; ESM files use `.js`. The mock is a separate
+subpath (`@scancode-as/newland-web-kiosk/mock`), so importing the root entry does
+not pull it in.
 
 The banner marks all exports, including the mock, as client code. Do not import
 the package into a React Server Component if you need server-only execution.
@@ -750,8 +787,9 @@ stay that way: `TrsmtChkChar`, `TrsmtStasrtStop`, `MsgtoEan13`, `Micor`,
 
 This library ships only the code-ID and property vocabulary. The full
 per-engine tables, including defaults, enums and the property subset for each
-symbology, are proprietary and are not committed to this repository; the
-machine-readable dump stays in `artifacts/newland/`.
+symbology, are proprietary and are not included in this repository or the
+published package. The machine-readable dump is kept in the git-ignored
+`artifacts/` directory.
 
 ## Known unknowns and device checklist
 
@@ -776,7 +814,7 @@ the following. These are now treated as facts for this version, not guesses:
   `Scanmode()` and `BarcodeConfig()` all throw `Method not found`; `Stop(arg)`
   also fails.
 - **Device info:** `NGetModel()` returns `NLS-MT90`, `NGetSerial()` and
-  `NGetDeviceName()` return `MT9055W4EL00736`, and `NGetBuild()` returns
+  `NGetDeviceName()` return `YOUR_DEVICE_SERIAL`, and `NGetBuild()` returns
   `MT90-GL_V8.04.010_111010`. `Power(1)` and `Power(0)` work. `Power(true)` is
   coerced to `0` by the bridge, so it does **not** power the scanner on.
 - **`nlBarcode` shape:** confirmed by a live scan, five arguments with the
@@ -878,8 +916,9 @@ These are unresolved until verified on hardware:
 - **NQuire** — GPIO and logo LED control are not implemented and are planned to
   be a no-op on non-NQuire devices.
 
-The Web Kiosk User Guide v2.21 used for this implementation is in
-`newland-web-kiosk_user-guide_v221.pdf`.
+The Web Kiosk User Guide v2.21 used for this implementation is vendor
+documentation. It is internal and is not included in this repository or the
+published package.
 
 ## Inspecting the kiosk with adb
 
@@ -977,3 +1016,12 @@ adb forward tcp:9222 localabstract:<socket-name>
 Alternatively, load `spike/index.html` on the device once the launch URL and
 activity are known, and inspect `Object.keys(window.nlScan)` live. Do not paste
 or commit proprietary APK contents beyond the specific API names needed.
+
+## License
+
+Released under the [MIT license](LICENSE).
+
+Copyright (c) 2026 scancode-as
+
+This software is provided under the MIT license, without warranty of any kind;
+see the [LICENSE](LICENSE) file for the full terms.

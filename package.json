@@ -1,8 +1,19 @@
 {
-  "name": "newland-web-kiosk",
+  "name": "@scancode-as/newland-web-kiosk",
   "version": "0.1.0",
-  "private": true,
+  "license": "MIT",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/scancode-as/web-kiosk-scanning.git"
+  },
+  "homepage": "https://github.com/scancode-as/web-kiosk-scanning#readme",
+  "bugs": {
+    "url": "https://github.com/scancode-as/web-kiosk-scanning/issues"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -29,6 +40,8 @@
     "demo"
   ],
   "scripts": {
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
     "build": "tsup",
     "dev": "npm run dev -w demo",
     "test": "vitest run",
