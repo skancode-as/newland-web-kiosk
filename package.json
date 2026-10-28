@@ -8,11 +8,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/scancode-as/web-kiosk-scanning.git"
+    "url": "git+https://github.com/skancode-as/newland-web-kiosk.git"
   },
-  "homepage": "https://github.com/scancode-as/web-kiosk-scanning#readme",
+  "homepage": "https://github.com/skancode-as/newland-web-kiosk#readme",
   "bugs": {
-    "url": "https://github.com/scancode-as/web-kiosk-scanning/issues"
+    "url": "https://github.com/skancode-as/newland-web-kiosk/issues"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

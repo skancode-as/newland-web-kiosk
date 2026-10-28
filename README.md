@@ -51,13 +51,13 @@ npm install @skancode/newland-web-kiosk
 As a fallback, install a pinned Git tag directly from GitHub:
 
 ```bash
-npm install github:scancode-as/web-kiosk-scanning#v0.1.0
+npm install github:skancode-as/newland-web-kiosk#v0.1.0
 ```
 
 Or in `package.json`:
 
 ```json
-"@skancode/newland-web-kiosk": "github:scancode-as/web-kiosk-scanning#v0.1.0"
+"@skancode/newland-web-kiosk": "github:skancode-as/newland-web-kiosk#v0.1.0"
 ```
 
 Git installs run the package's `prepare` script, which runs `npm run build`, so
