@@ -1,4 +1,4 @@
-# @scancode-as/newland-web-kiosk
+# @skancode/newland-web-kiosk
 
 A small React library for Newland Web Kiosk devices, published publicly on npm.
 It wraps the native `window.nlScan` bridge in typed functions and turns the
@@ -45,7 +45,7 @@ native bridge behind them, those wrappers simply never receive device events.
 Install from the public npm registry:
 
 ```bash
-npm install @scancode-as/newland-web-kiosk
+npm install @skancode/newland-web-kiosk
 ```
 
 As a fallback, install a pinned Git tag directly from GitHub:
@@ -57,7 +57,7 @@ npm install github:scancode-as/web-kiosk-scanning#v0.1.0
 Or in `package.json`:
 
 ```json
-"@scancode-as/newland-web-kiosk": "github:scancode-as/web-kiosk-scanning#v0.1.0"
+"@skancode/newland-web-kiosk": "github:scancode-as/web-kiosk-scanning#v0.1.0"
 ```
 
 Git installs run the package's `prepare` script, which runs `npm run build`, so
@@ -82,8 +82,8 @@ npm run demo:build   # production build of the demo
 ## Releasing
 
 Releases are published manually from a maintainer's CLI. You need an npm
-account that can publish to the `@scancode-as` scope: either a member of the
-`scancode-as` npm organization with publish rights, or the account that owns
+account that can publish to the `@skancode` scope: either a member of the
+`skancode` npm organization with publish rights, or the account that owns
 the scope.
 
 From a clean checkout of the commit you intend to release:
@@ -135,7 +135,7 @@ true and `isKiosk()` is true at that moment.
 ```tsx
 // main.tsx
 import { createRoot } from "react-dom/client";
-import { KioskProvider } from "@scancode-as/newland-web-kiosk";
+import { KioskProvider } from "@skancode/newland-web-kiosk";
 import { App } from "./App";
 
 createRoot(document.getElementById("root")!).render(
@@ -161,7 +161,7 @@ import {
   useDeviceInfo,
   useNfc,
   useScanner,
-} from "@scancode-as/newland-web-kiosk";
+} from "@skancode/newland-web-kiosk";
 
 export function App() {
   const device = useDeviceInfo();
@@ -217,7 +217,7 @@ import {
   type SwitchValue,
   type UseScannerResult,
   type UseDeviceInfoResult,
-} from "@scancode-as/newland-web-kiosk";
+} from "@skancode/newland-web-kiosk";
 ```
 
 | Export                    | Description                                                                                    |
@@ -232,7 +232,7 @@ import {
 
 The root entry exports the items above (plus their types) and nothing from the
 internal registry or test helpers. Mock helpers live at
-`@scancode-as/newland-web-kiosk/mock`.
+`@skancode/newland-web-kiosk/mock`.
 
 `useScanner()` exposes:
 
@@ -326,7 +326,7 @@ type NfcEvent = {
 The mock implements only `window.nlScan`. The callback globals (`nlBarcode`,
 `nlNFC`) are installed by the registry when the corresponding hook subscribes,
 not by the mock. The mock is part of the same package and is consumed through
-the `@scancode-as/newland-web-kiosk/mock` subpath; no separate install is needed.
+the `@skancode/newland-web-kiosk/mock` subpath; no separate install is needed.
 
 Install the mock **before React mounts** so `KioskProvider` sees a bridge when it
 runs its mount effect and `useDeviceInfo()` reads the mock device info when it
@@ -336,7 +336,7 @@ mock is installed later (see [Late bridge injection](#late-bridge-injection)).
 not during server rendering.
 
 ```ts
-import { installMockNlScan } from "@scancode-as/newland-web-kiosk/mock";
+import { installMockNlScan } from "@skancode/newland-web-kiosk/mock";
 
 const mock = installMockNlScan({
   deviceInfo: {
@@ -571,7 +571,7 @@ registry, so registry behavior can be tested in a plain browser-like
 environment. The **React layer** is thin: hooks subscribe to the core, expose
 `isSupported` where relevant, and clean up on unmount; the provider issues its
 one-shot commands. The **mock subpath** is a separate entry point
-(`@scancode-as/newland-web-kiosk/mock`) so production bundles do not pull in test helpers.
+(`@skancode/newland-web-kiosk/mock`) so production bundles do not pull in test helpers.
 
 The callback registry is the important piece. The kiosk can only call one global
 `nlBarcode`, so the registry installs one wrapper and fans each parsed event out
@@ -727,7 +727,7 @@ page to compare wedge behavior with the callback installed and removed.
 as a peer dependency. The package exposes `.` and `./mock` through `exports`,
 ships only `dist`, and publishes publicly with `publishConfig.access: "public"`.
 CJS files use the `.cjs` extension; ESM files use `.js`. The mock is a separate
-subpath (`@scancode-as/newland-web-kiosk/mock`), so importing the root entry does
+subpath (`@skancode/newland-web-kiosk/mock`), so importing the root entry does
 not pull it in.
 
 The banner marks all exports, including the mock, as client code. Do not import
