@@ -81,22 +81,50 @@ npm run demo:build   # production build of the demo
 
 ## Releasing
 
-The package publishes to the public npm registry from the `scancode-as` GitHub
-organization. The organization must own (or create) the `@scancode-as` npm
-scope, and the repository must define an `NPM_TOKEN` secret with publish rights
-to that scope. The publish workflow uses that token; no registry token is
-committed to the repository.
+Releases are published manually from a maintainer's CLI. You need an npm
+account that can publish to the `@scancode-as` scope: either a member of the
+`scancode-as` npm organization with publish rights, or the account that owns
+the scope.
 
-To release:
+From a clean checkout of the commit you intend to release:
 
-1. Run `npm version patch` (or `minor` / `major`). This updates `package.json`
-   and creates a `vX.Y.Z` tag.
-2. Push the commit and tag: `git push --follow-tags`.
-3. The `publish.yml` GitHub Actions workflow runs on `v*` tags, then runs
-   `npm ci`, `npm test`, `npm run build` and `npm publish --access public`.
+```bash
+npm login --auth-type=web
+npm whoami
+npm publish --access public
+```
 
-`prepublishOnly` also runs typecheck, tests and the build before any manual
-`npm publish`.
+`npm whoami` should print the account that holds publish rights. `npm publish`
+runs the `prepublishOnly` script first, which runs the typecheck, the full test
+suite and the build, so a failing check aborts the publish.
+
+The `version` in `package.json` must match the intended release. If you need to
+bump it, use `npm version patch|minor|major --no-git-tag-version` before
+publishing, then commit the version change afterwards. This skips creating a
+tag, because the tag is created after a successful publish:
+
+```bash
+npm version patch --no-git-tag-version
+```
+
+After a successful publish, commit the version bump (skip this if you did not
+bump), then tag the released commit and push the tag:
+
+```bash
+git add package.json package-lock.json
+git commit -m "chore: release v0.1.0"
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+No `NPM_TOKEN` repository secret or long-lived npm automation token is used:
+publishing is authenticated only by the maintainer's interactive `npm login`
+session. Nothing publishes automatically. The GitHub Actions workflow only
+validates pushes and pull requests: it runs the typecheck, tests and builds for
+both the library and the demo, and never publishes.
+
+If automated publishing is wanted later, use npm trusted publishing (OIDC)
+from GitHub Actions rather than a long-lived token.
 
 ## Quick start
 
