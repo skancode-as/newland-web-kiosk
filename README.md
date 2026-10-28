@@ -347,6 +347,86 @@ On a real device, build the demo and serve `demo/dist` over HTTP, then open it
 through a `newlandhttps://` shortcut. The native bridge only exists inside Web
 Kiosk; opening the same build in Chrome uses the mock.
 
+### Showcase demo
+
+`demo/showcase.html` is a presentation-mode stock-recount flow. It uses the real
+library hooks (`KioskProvider`, `useBarcodeScan`, `useNfc`, `useDeviceInfo`,
+`useScanner`) and never calls `window.nlScan` directly. The editable
+`PRODUCT_CATALOG` and `BADGES` maps sit at the top of `demo/src/showcase.tsx`.
+
+```bash
+npm run dev
+# desktop: http://localhost:5173/showcase.html
+```
+
+On the device over USB, forward the Vite port and open the page through the
+kiosk URL scheme:
+
+```bash
+adb reverse tcp:5173 tcp:5173
+# then open newlandhttp://localhost:5173/showcase.html
+```
+
+For a shared demo, build the page (`npm run demo:build`) and deploy
+`demo/dist/showcase.html` plus its assets to an internal HTTPS host, then open
+`newlandhttps://…/showcase.html`.
+
+The page starts locked. The flow is badge login → scan SKU → enter quantity →
+finish:
+
+1. Tap an employee badge to unlock the recount form.
+2. Scan a product barcode. The read-only SKU field fills from the scanner.
+3. Enter a whole-number quantity (`0` is valid) and press Enter or tap **Add
+   count**.
+4. Repeat. Scanning the same SKU again merges into the existing line, which can
+   be removed from the sheet.
+5. Tap **Finish recount** to lock the sheet and show the completion summary with
+   the line count, total units and completion time.
+6. **Start new recount** clears the session, locks the form and requires another
+   badge tap.
+
+**Single scan** is an optional mode on the count-entry card, shown only while the
+recount is unlocked. It starts off and is remembered across **Start new recount**
+in the same page session (the preference lives outside the recount data):
+
+- **Off** — scanning fills the read-only SKU field and you enter the quantity
+  manually, exactly as described above.
+- **On** — the quantity is fixed at `1` (the field is disabled and shows the hint
+  **Fixed at 1 in single-scan mode.**), the **Add count** button is hidden, and
+  each barcode scan immediately adds one unit. Repeated scans of the same SKU
+  merge into one line, so scanning `5740700982972` twice records one line,
+  `Coca-Cola Zero Sugar`, with quantity `2` and 2 total units.
+
+Single scan only applies while the recount is unlocked: the switch is hidden on
+the locked and completion screens, and scans there still only show the existing
+warning. Unknown SKUs are still added and labelled `Uncatalogued SKU`.
+
+The demo uses the codes recorded on the MT90:
+
+| Step    | Input                                           | Result                                   |
+| ------- | ----------------------------------------------- | ---------------------------------------- |
+| Login   | NFC tag UID `A63F0A84` (`nlNFC("NFC", …)`)      | `Andreas V` — Product Engineer, unlocked |
+| Product | barcode `5740700982972` (EAN-13, symbology `8`) | `Coca-Cola Zero Sugar`                   |
+
+Additional catalog entries: `9799234564211` (Field Operations Handbook),
+`9778322613451` (Quarterly Logistics Review), `2112345678917` (MT90 Spare
+Battery Pack) and `24561239` (Handheld Trigger Grip).
+
+Unknown badge UIDs are denied and leave the form locked. Unknown SKUs are **not**
+rejected: they are added to the sheet and clearly labelled `Uncatalogued SKU`
+with warning styling. The NFC callback only exposes the tag UID, so the page
+does not invent NDEF payloads.
+
+**Presenter mode** is desktop-only and appears only when the mock bridge is
+installed. Open the small **Preview** control in the footer to simulate the
+employee badge, an unknown badge, a known SKU, an unknown SKU, or a reset. While
+the panel is open, `B` simulates the badge, `S` the known SKU and `R` a reset;
+shortcuts are ignored while typing in form fields. Simulations go through the
+mock, which invokes the real registry and parsers.
+
+The diagnostic harness remains at `http://localhost:5173/index.html` (or `/`).
+Both pages are emitted by `npm run demo:build`.
+
 ## Hardware spike page
 
 `spike/index.html` is a standalone, no-build page with inline CSS and JS. It is
