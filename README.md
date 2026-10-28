@@ -51,13 +51,13 @@ npm install @skancode/newland-web-kiosk
 As a fallback, install a pinned Git tag directly from GitHub:
 
 ```bash
-npm install github:skancode-as/newland-web-kiosk#v0.1.0
+npm install github:skancode-as/newland-web-kiosk#v0.1.1
 ```
 
 Or in `package.json`:
 
 ```json
-"@skancode/newland-web-kiosk": "github:skancode-as/newland-web-kiosk#v0.1.0"
+"@skancode/newland-web-kiosk": "github:skancode-as/newland-web-kiosk#v0.1.1"
 ```
 
 Git installs run the package's `prepare` script, which runs `npm run build`, so
@@ -112,9 +112,9 @@ bump), then tag the released commit and push the tag:
 
 ```bash
 git add package.json package-lock.json
-git commit -m "chore: release v0.1.0"
-git tag v0.1.0
-git push origin v0.1.0
+git commit -m "chore: release v0.1.1"
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
 No `NPM_TOKEN` repository secret or long-lived npm automation token is used:
