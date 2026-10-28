@@ -662,6 +662,11 @@ stay that way: `TrsmtChkChar`, `TrsmtStasrtStop`, `MsgtoEan13`, `Micor`,
 > `CODEBAR` and `Common1D` vs `_1D_COMMON` are not interchangeable, and neither
 > `QRCODE` nor `CDB` is a native config key. Also note that `DM.RectAngle` has
 > inverted values: table A maps `"0"` to enable, table B maps `"0"` to disable.
+>
+> The MT90 / CM60L used for testing resolves to **Table A**; see
+> [Confirmed on MT90 / Web Kiosk 2.21](#confirmed-on-mt90--web-kiosk-221) for the
+> logcat evidence. The library stays device-agnostic: it still exports both
+> vocabularies and `configureSymbology` makes no assumption about the table.
 
 This library ships only the code-ID and property vocabulary. The full
 per-engine tables, including defaults, enums and the property subset for each
@@ -727,15 +732,36 @@ the following. These are now treated as facts for this version, not guesses:
   presence of `nlNFC` is how the kiosk chooses between the callback and its NFC
   wedge.
 - **URL schemes:** `newlandhttp`, `newlandhttps`, `newlandfile`.
+- **Active symbology table:** **Table A (`EngineSettingCodeEN`)**. A probe on
+  this MT90 (`persist.sys.scan.info = CM60L`, Web Kiosk 2.21) sent both Codabar
+  spellings with the `Enable` default (`"1"`) while the scanner was powered on.
+  The native adapter accepted `CODABAR` and rejected `CODEBAR`:
+
+  ```text
+  D NLWebKiosk: BarcodeConfig: CODABAR,Enable,1
+  D CommonScanAdapter: Set code params, profile:=default, code_id:=CODABAR, property:=Enable, value:=1, res:=1
+  D NLWebKiosk: BarcodeConfig: CODEBAR,Enable,1
+  D CommonScanAdapter: Set code params, profile:=default, code_id:=CODEBAR, property:=Enable, value:=1, res:=0
+  ```
+
+  That means `CODABAR` is the working spelling on this device, and
+  `Common1D`, `CloseECI` and Table A's `DM.RectAngle` values apply too. The
+  `BarcodeConfig` bridge method is `void`, so the booleans returned by the probe
+  only confirm that each call was dispatched; the `res:=` field is the verdict.
+  The probe page lives at `demo/table-probe.html`
+  (`demo/src/table-probe.tsx`); evidence is in
+  `artifacts/table-probe-filtered.txt`, `artifacts/table-probe-logcat.txt` and
+  `artifacts/table-probe.png`.
 
 These are unresolved until verified on hardware:
 
-- **Which symbology table is active.** Code IDs and property keys are resolved
-  and exported (see
-  [BarcodeConfig / symbology reference](#barcodeconfig--symbology-reference)),
-  but which of the two native tables the engine consults cannot be read from the
-  page. That decides `CODABAR` vs `CODEBAR`, `Common1D` vs `_1D_COMMON`,
-  `CloseECI` vs `EnECI`, and the inverted `DM.RectAngle` values.
+- **Symbology table on other engines and firmware.** Table A is confirmed on
+  the tested MT90 / CM60L (see above), but other Newland engines or firmware
+  builds may consult Table B. Code IDs and property keys for both tables are
+  exported (see
+  [BarcodeConfig / symbology reference](#barcodeconfig--symbology-reference));
+  the page cannot read which table is active, so device-specific spellings must
+  still be chosen per engine.
 - **Alias acceptance and case sensitivity.** `QRCODE` and `CDB` are not native
   config keys. Whether the driver tolerates them, or lower-case IDs, is
   untested (testing would require sending a config).
